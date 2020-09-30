@@ -34,6 +34,7 @@ export class Image360{
 export class Images360 extends EventDispatcher{
 	constructor(viewer){
 		super();
+		console.log('test');
 
 		this.viewer = viewer;
 		this.selectingEnabled = true;
