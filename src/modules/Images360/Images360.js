@@ -34,7 +34,7 @@ export class Image360{
 export class Images360 extends EventDispatcher{
 	constructor(viewer){
 		super();
-		console.log('test');
+		console.log('test2');
 
 		this.viewer = viewer;
 		this.selectingEnabled = true;
@@ -161,10 +161,12 @@ export class Images360 extends EventDispatcher{
 			return;
 		}
 
+
 		for(const image of this.images){
-			image.mesh.visible = visible;
+			image.mesh.visible = visible && (this.focusedImage == null);
 		}
 
+		this.sphere.visible = visible && (this.focusedImage != null);
 		this._visible = visible;
 		this.dispatchEvent({
 			type: "visibility_changed",
