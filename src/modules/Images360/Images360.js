@@ -213,6 +213,7 @@ export class Images360 extends EventDispatcher{
 
 			this.viewer.setControls(this.viewer.orbitControls);
 			this.viewer.orbitControls.doubleClockZoomEnabled = false;
+			this.viewer.orbitControls.direction = -1;
 
 			for(let image of this.images){
 				image.mesh.visible = false;
@@ -309,6 +310,7 @@ export class Images360 extends EventDispatcher{
 		this.sphere.material.needsUpdate = true;
 		this.sphere.visible = false;
 
+		viewer.orbitControls.direction = 1;
 		viewer.orbitControls.doubleClockZoomEnabled = true;
 		viewer.setControls(previousView.controls);
 

@@ -24,6 +24,8 @@ export class OrbitControls extends EventDispatcher{
 	constructor(viewer){
 		super();
 
+		this.direction = 1;
+
 		this.viewer = viewer;
 		this.renderer = viewer.renderer;
 
@@ -247,8 +249,8 @@ export class OrbitControls extends EventDispatcher{
 			let pitch = view.pitch;
 			let pivot = view.getPivot();
 
-			yaw -= progression * this.yawDelta;
-			pitch -= progression * this.pitchDelta;
+			yaw -= this.direction * progression * this.yawDelta;
+			pitch -= this.direction * progression * this.pitchDelta;
 
 			view.yaw = yaw;
 			view.pitch = pitch;
