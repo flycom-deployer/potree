@@ -170,6 +170,7 @@ export class Images360 extends EventDispatcher{
 
 		this.sphere.visible = visible && (this.focusedImage != null);
 		this._visible = visible;
+
 		this.dispatchEvent({
 			type: "visibility_changed",
 			images: this,
@@ -185,7 +186,7 @@ export class Images360 extends EventDispatcher{
 		this.focus(image360);
 	}
 
-	focus(image360){
+	async focus(image360){
 		if (this.focusedImage === null) {
 			// save old fov
 			if (!this.oldFov) {
@@ -224,7 +225,7 @@ export class Images360 extends EventDispatcher{
 			this.sphere.visible = false;
 		}
 
-		this.load(image360).then( () => {
+		return this.load(image360).then( () => {
 			this.sphere.visible = true;
 			this.sphere.material.map = image360.texture;
 			this.sphere.material.needsUpdate = true;
@@ -349,12 +350,26 @@ export class Images360 extends EventDispatcher{
 		this.oldEdlOpacity = 0;
 	}
 
-	focusNearestImage(forward) {
+	async focusNearestImage(forward) {
+		if (this.loading === undefined) {
+			this.loading = false;
+		}
+
+		if (this.loading) {
+			return;
+		}
+
+		this.loading = true;
+
 		const nearestImage = this.getNearestImage(forward);
 
 		if (nearestImage) {
-			this.focus(nearestImage);
+			try {
+				await this.focus(nearestImage);
+            } catch (e) {}
 		}
+
+		this.loading = false;
 	}
 
 	distance(point1, point2) {
@@ -535,7 +550,6 @@ export class Images360Loader{
 			images360.node.add(mesh);
 
 			image360.mesh = mesh;
-			// image360.mesh.visible = viewer.orbitControls.doubleClockZoomEnabled;
 			image360.mesh.visible = viewer.orbitControls.doubleClockZoomEnabled && images360.visible;
 		}
 	}
