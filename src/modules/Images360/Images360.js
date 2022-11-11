@@ -16,7 +16,7 @@ let previousView = {
 };
 
 const timeout = 0;
-
+console.log('test');
 export class Image360{
 	constructor(file, time, longitude, latitude, altitude, course, pitch, roll){
 		this.file = file;
@@ -475,9 +475,6 @@ export class Images360 extends EventDispatcher{
 export class Images360Loader{
 
 	static async load(url, viewer, params = {}){
-		console.log('load');
-		alert('load');
-
 		if(!params.transform){
 			params.transform = {
 				forward: a => a,
