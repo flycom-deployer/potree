@@ -475,6 +475,8 @@ export class Images360 extends EventDispatcher{
 export class Images360Loader{
 
 	static async load(url, viewer, params = {}){
+		console.log('load');
+		alert('load');
 
 		if(!params.transform){
 			params.transform = {
