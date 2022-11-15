@@ -16,7 +16,7 @@ let previousView = {
 };
 
 const timeout = 0;
-console.log('test');
+
 export class Image360{
 	constructor(file, time, longitude, latitude, altitude, course, pitch, roll){
 		this.file = file;
