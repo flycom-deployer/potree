@@ -220,7 +220,10 @@ export class MeasuringTool extends EventDispatcher{
 		};
 
 		cancel.callback = e => {
-			measure.removeMarker(measure.points.length - 1);
+			if (cancel.removeLastMarker) {
+				measure.removeMarker(measure.points.length - 1);
+			}
+
 			domElement.removeEventListener('mouseup', insertionCallback, false);
 			this.viewer.removeEventListener('cancel_insertions', cancel.callback);
 		};
