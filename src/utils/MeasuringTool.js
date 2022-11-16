@@ -228,9 +228,8 @@ export class MeasuringTool extends EventDispatcher{
 			this.viewer.removeEventListener('cancel_insertions', cancel.callback);
 		};
 
-		this.viewer.addEventListener('cancel_insertions', cancel.callback);
-
 		if (measure.maxMarkers > 1) {
+			this.viewer.addEventListener('cancel_insertions', cancel.callback);
 			domElement.addEventListener('mouseup', insertionCallback, false);
 		}
 
