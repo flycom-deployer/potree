@@ -2,8 +2,7 @@
 precision highp float;
 precision highp int;
 
-#define max_clip_polygons 10
-#define PI 3.141592653589793
+#define max_clip_polygons 8
 
 attribute vec3 position;
 attribute vec3 color;
@@ -56,7 +55,7 @@ uniform int clipMethod;
 
 #if defined(num_clippolygons) && num_clippolygons > 0
 	uniform int uClipPolygonVCount[num_clippolygons];
-	uniform vec3 uClipPolygonVertices[num_clippolygons * 8];
+	uniform vec3 uClipPolygonVertices[num_clippolygons * 100];
 	uniform mat4 uClipPolygonWVP[num_clippolygons];
 #endif
 
@@ -725,7 +724,7 @@ bool pointInClipPolygon(vec3 point, int polyIdx) {
 
 	int j = uClipPolygonVCount[polyIdx] - 1;
 	bool c = false;
-	for(int i = 0; i < 8; i++) {
+	for(int i = 0; i < 100; i++) {
 		if(i == uClipPolygonVCount[polyIdx]) {
 			break;
 		}
