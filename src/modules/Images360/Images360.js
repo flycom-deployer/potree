@@ -257,7 +257,8 @@ export class Images360 extends EventDispatcher{
 					// get additional target and viewer settings
 					const { panoramaTargetOffsetZ = 0, panoramaTargetZoomIn = false } = image360.targetSettings || {};
 
-					const optionalTarget = new THREE.Vector3(x, y, z + panoramaTargetOffsetZ);
+					// const optionalTarget = new THREE.Vector3(x, y, z + panoramaTargetOffsetZ);
+					const optionalTarget = new THREE.Vector3(x, y, z);
 					dir = optionalTarget.clone().sub(target).normalize();
 
 					// set point cloud opacity
