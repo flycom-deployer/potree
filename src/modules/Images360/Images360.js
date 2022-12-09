@@ -1,7 +1,7 @@
 import { EventDispatcher } from "../../EventDispatcher.js";
 
-let sg = new THREE.SphereGeometry(1, 20, 20);
-let sgHigh = new THREE.SphereGeometry(1, 128, 128);
+let sg = new THREE.SphereGeometry(1, 16, 8);
+let sgHigh = new THREE.SphereGeometry(1, 64, 32);
 
 let sm = new THREE.MeshBasicMaterial({side: THREE.BackSide});
 let smHovered = new THREE.MeshBasicMaterial({side: THREE.BackSide, color: 0xff0000});
@@ -40,9 +40,15 @@ export class Images360 extends EventDispatcher{
 
 		this.images = [];
 		this.node = new THREE.Object3D();
-		this.sphere = new THREE.Mesh(sgHigh, sm);
+
+		const sphereMaterial = sm.clone();
+		// no transparency
+		sphereMaterial.transparent = false;
+
+		this.sphere = new THREE.Mesh(sgHigh, sphereMaterial);
 		this.sphere.visible = false;
 		this.sphere.scale.set(1000, 1000, 1000);
+
 		this.node.add(this.sphere);
 
 		this._visible = true;
@@ -232,6 +238,13 @@ export class Images360 extends EventDispatcher{
 
 			{ // orientation
 				let {course, pitch, roll} = image360;
+
+				// if no rotation data, set the camera course(yaw) to the center of the image
+				// 5 x camera; 360 / 5 = 72; 72 / 2 = 36 => 180 + 36
+				if (course === 0 && pitch === 0 && roll === 0) {
+					course = -(180 + 36);
+				}
+
 				this.sphere.rotation.set(
 					THREE.Math.degToRad(+roll + 90),
 					THREE.Math.degToRad(-pitch),
