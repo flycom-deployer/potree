@@ -247,7 +247,7 @@ export class Images360 extends EventDispatcher{
 
 				this.sphere.rotation.set(
 					THREE.Math.degToRad(+roll + 90),
-					THREE.Math.degToRad(-pitch),
+					THREE.Math.degToRad(+pitch),
 					THREE.Math.degToRad(-course + 90),
 					"ZYX"
 				);
@@ -554,7 +554,7 @@ export class Images360Loader{
 				var {course, pitch, roll} = image360;
 				mesh.rotation.set(
 					THREE.Math.degToRad(+roll + 90),
-					THREE.Math.degToRad(-pitch),
+					THREE.Math.degToRad(+pitch),
 					THREE.Math.degToRad(-course + 90),
 					"ZYX"
 				);
