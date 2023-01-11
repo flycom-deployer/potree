@@ -391,20 +391,16 @@ export class Images360 extends EventDispatcher{
 	}
 
 	getNearestImage(forward) {
-		const distance = 1;
-
 		const position = this.viewer.scene.view.position.clone();
 		const target = this.viewer.scene.view.getPivot();
-		let dir = target.clone().sub(position).normalize();
 
+		let dir = target.clone().sub(position).normalize();
 		this.nextPreviousDirection = dir.clone();
 
 		if (!forward) {
 			dir.x = -dir.x;
 			dir.y = -dir.y;
 		}
-
-		position.add( dir.multiplyScalar(distance) );
 
 		let minDistance = -1;
 		let minImage;
@@ -413,21 +409,31 @@ export class Images360 extends EventDispatcher{
 			const imagePosition =  new THREE.Vector3(...image.position);
 			let imageDirection = imagePosition.clone().sub(position).normalize();
 
+			const direction = this.getFrontBackDirection(dir, imageDirection);
 			const distance = this.distance(image.position, [position.x, position.y]);
 
-			let direction = dir.clone();
-			direction.z = 0;
-			imageDirection.z = 0;
-
-			const angle = imageDirection.angleTo(direction);
-
-			if ((this.focusedImage !== image) && (minDistance === -1 || distance < minDistance) && angle < Math.PI/2) {
+			if ((distance > 0.01) && (minDistance === -1 || distance < minDistance) && direction > 0) {
 				minDistance = distance;
 				minImage = image;
 			}
 		}
 
 		return minImage;
+	}
+
+	getFrontBackDirection(vec1, vec2) {
+		const {x: x1, y: y1} = vec1;
+		const {x: x2, y: y2} = vec2;
+
+		const ax = x2;
+		const ay = y2;
+		const bx = x1;
+		const by = y1;
+
+		const dotProduct = ax * bx + ay * by;
+
+		// - obtuse angle (topi kot), + acute angle (ostri kot)
+		return Math.sign(dotProduct);
 	}
 
 	exit(forward) {
