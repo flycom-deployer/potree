@@ -54,6 +54,8 @@ export class Images360 extends EventDispatcher{
 		this._visible = true;
 
 		this.focusedImage = null;
+		this.loading = false;
+
 		this.nextPreviousDirection;
 		this.oldFov = 0;
 		this.oldSpeed = 0;
@@ -229,6 +231,13 @@ export class Images360 extends EventDispatcher{
 			this.selectingEnabled = false;
 
 			this.sphere.visible = false;
+		} else {
+			if (this.focusedImage) {
+				this.focusedImage.texture.dispose();
+				this.focusedImage.texture = null;
+			}
+
+			this.sphere.material.map = null;
 		}
 
 		return this.load(image360).then( () => {
@@ -321,6 +330,11 @@ export class Images360 extends EventDispatcher{
 			return;
 		}
 
+		if (image.texture) {
+			image.texture.dispose();
+			image.texture = null;
+		}
+
 		this.sphere.material.map = null;
 		this.sphere.material.needsUpdate = true;
 		this.sphere.visible = false;
@@ -365,10 +379,6 @@ export class Images360 extends EventDispatcher{
 	}
 
 	async focusNearestImage(forward) {
-		if (this.loading === undefined) {
-			this.loading = false;
-		}
-
 		if (this.loading) {
 			return;
 		}
