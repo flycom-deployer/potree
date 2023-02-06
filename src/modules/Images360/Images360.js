@@ -83,14 +83,21 @@ export class Images360 extends EventDispatcher{
 			const yawStep = Math.PI/18.0;
     		const keyCode = parseInt(e.which);
 
-    		// up, W
-    		if (keyCode === 87 || keyCode === 38) {
-        		this.focusNearestImage(true)
-			// down, S
-    		} else if (keyCode == 83 || keyCode === 40) {
-        		this.focusNearestImage(false)
+    		// up, W, down, S
+			if (this.isNavigation) {
+				if (keyCode === 87 || keyCode === 38 || keyCode == 83 || keyCode === 40) {
+					this.viewer.dispatchEvent({
+						type: 'key_event',
+						payload: {
+							eventType: 'key_down',
+							keyCode,
+						},
+					});
+				}
+			}
+
 			// left
-    		} else if (keyCode == 37) {
+    		if (keyCode == 37) {
 				this.viewer.orbitControls.yawDelta -= yawStep;
 			// right
     		} else if (keyCode == 39) {
@@ -189,12 +196,14 @@ export class Images360 extends EventDispatcher{
 		return this._visible;
 	}
 
-	focusExtern(image360) {
+	async focusExtern(image360) {
 		this.nextPreviousDirection = null;
-		this.focus(image360);
+		await this.focus(image360);
 	}
 
 	async focus(image360){
+		this.isNavigation = image360.style === 'navigation';
+
 		if (this.focusedImage === null) {
 			// save old fov
 			if (!this.oldFov) {
@@ -232,7 +241,7 @@ export class Images360 extends EventDispatcher{
 
 			this.sphere.visible = false;
 		} else {
-			if (this.focusedImage) {
+			if (this.focusedImage && this.focusedImage.texture) {
 				this.focusedImage.texture.dispose();
 				this.focusedImage.texture = null;
 			}
@@ -290,8 +299,15 @@ export class Images360 extends EventDispatcher{
 						this.viewer.setFOV(20);
 					}
 				} else {
-					dir = target.clone().sub(viewer.scene.view.position).normalize();
-					dir.z = 0;
+					const cameraPosition = this.viewer.scene.view.position.clone();
+					const cameraTarget = this.viewer.scene.view.getPivot();
+
+					if (!this.focusedImage) {
+						cameraPosition.z = 0;
+						cameraTarget.z = 0;
+					}
+
+					dir = cameraTarget.clone().sub(cameraPosition).normalize();
 				}
 			}
 
@@ -330,7 +346,7 @@ export class Images360 extends EventDispatcher{
 			return;
 		}
 
-		if (image.texture) {
+		if (image.texture && image.texture) {
 			image.texture.dispose();
 			image.texture = null;
 		}
