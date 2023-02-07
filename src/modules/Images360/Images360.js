@@ -240,16 +240,16 @@ export class Images360 extends EventDispatcher{
 			this.selectingEnabled = false;
 
 			this.sphere.visible = false;
-		} else {
+		}
+		return this.load(image360).then( () => {
+			// dispose last used texture
 			if (this.focusedImage && this.focusedImage.texture) {
 				this.focusedImage.texture.dispose();
 				this.focusedImage.texture = null;
+
+				this.sphere.material.map = null;
 			}
 
-			this.sphere.material.map = null;
-		}
-
-		return this.load(image360).then( () => {
 			this.sphere.visible = true;
 			this.sphere.material.map = image360.texture;
 			this.sphere.material.needsUpdate = true;
