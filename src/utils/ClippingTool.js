@@ -8,12 +8,13 @@ import { EventDispatcher } from "../EventDispatcher.js";
 export class ClippingTool extends EventDispatcher{
 
 	constructor(viewer){
-		super(); 
+		super();
 
 		this.viewer = viewer;
 
-		this.maxPolygonVertices = 8; 
-		
+		// this.maxPolygonVertices = 8;
+		this.maxPolygonVertices = 100;
+
 		this.addEventListener("start_inserting_clipping_volume", e => {
 			this.viewer.dispatchEvent({
 				type: "cancel_insertions"
@@ -28,11 +29,11 @@ export class ClippingTool extends EventDispatcher{
 		this.onRemove = e => {
 			this.sceneVolume.remove(e.volume);
 		};
-		
+
 		this.onAdd = e => {
 			this.sceneVolume.add(e.volume);
 		};
-		
+
 		this.viewer.inputHandler.addEventListener("delete", e => {
 			let volumes = e.selection.filter(e => (e instanceof ClipVolume));
 			volumes.forEach(e => this.viewer.scene.removeClipVolume(e));
@@ -45,23 +46,23 @@ export class ClippingTool extends EventDispatcher{
 		if(this.scene === scene){
 			return;
 		}
-		
+
 		if(this.scene){
 			this.scene.removeEventListeners("clip_volume_added", this.onAdd);
 			this.scene.removeEventListeners("clip_volume_removed", this.onRemove);
 			this.scene.removeEventListeners("polygon_clip_volume_added", this.onAdd);
 			this.scene.removeEventListeners("polygon_clip_volume_removed", this.onRemove);
 		}
-		
+
 		this.scene = scene;
-		
+
 		this.scene.addEventListener("clip_volume_added", this.onAdd);
 		this.scene.addEventListener("clip_volume_removed", this.onRemove);
 		this.scene.addEventListener("polygon_clip_volume_added", this.onAdd);
 		this.scene.addEventListener("polygon_clip_volume_removed", this.onRemove);
 	}
 
-	startInsertion(args = {}) {	
+	startInsertion(args = {}) {
 		let type = args.type || null;
 
 		if(!type) return null;
@@ -110,7 +111,7 @@ export class ClippingTool extends EventDispatcher{
 
 		let insertionCallback = (e) => {
 			if(e.button === THREE.MOUSE.LEFT){
-				
+
 				polyClipVol.addMarker();
 
 				// SVC Screen Line
@@ -120,19 +121,19 @@ export class ClippingTool extends EventDispatcher{
 					newPoint.y = e.offsetY;
 					let polyline = target.points.appendItem(newPoint);
 				});
-				
-				
+
+
 				if(polyClipVol.markers.length > this.maxPolygonVertices){
 					cancel.callback();
 				}
-				
+
 				this.viewer.inputHandler.startDragging(
 					polyClipVol.markers[polyClipVol.markers.length - 1]);
 			}else if(e.button === THREE.MOUSE.RIGHT){
 				cancel.callback(e);
 			}
 		};
-		
+
 		cancel.callback = e => {
 
 			//let first = svg.find("polyline")[0].points[0];
@@ -146,20 +147,20 @@ export class ClippingTool extends EventDispatcher{
 
 			if(polyClipVol.markers.length > 3) {
 				polyClipVol.removeLastMarker();
-				polyClipVol.initialized = true;	
+				polyClipVol.initialized = true;
 			} else {
 				this.viewer.scene.removePolygonClipVolume(polyClipVol);
 			}
 
-			this.viewer.renderer.domElement.removeEventListener("mouseup", insertionCallback, true);
+			this.viewer.renderer.domElement.removeEventListener("mouseup", insertionCallback, false);
 			this.viewer.removeEventListener("cancel_insertions", cancel.callback);
 			this.viewer.inputHandler.enabled = true;
 		};
-		
+
 		this.viewer.addEventListener("cancel_insertions", cancel.callback);
-		this.viewer.renderer.domElement.addEventListener("mouseup", insertionCallback , true);
+		this.viewer.renderer.domElement.addEventListener("mouseup", insertionCallback , false);
 		this.viewer.inputHandler.enabled = false;
-		
+
 		polyClipVol.addMarker();
 		this.viewer.inputHandler.startDragging(
 			polyClipVol.markers[polyClipVol.markers.length - 1]);

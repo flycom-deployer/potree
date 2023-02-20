@@ -18,12 +18,14 @@ import {MOUSE} from "../defines.js";
 import {Utils} from "../utils.js";
 import {EventDispatcher} from "../EventDispatcher.js";
 
- 
+
 export class OrbitControls extends EventDispatcher{
-	
+
 	constructor(viewer){
 		super();
-		
+
+		this.direction = 1;
+
 		this.viewer = viewer;
 		this.renderer = viewer.renderer;
 
@@ -76,6 +78,10 @@ export class OrbitControls extends EventDispatcher{
 		};
 
 		let scroll = (e) => {
+			if(!this.doubleClockZoomEnabled){
+				return;
+			}
+
 			let resolvedRadius = this.scene.view.radius + this.radiusDelta;
 
 			this.radiusDelta += -e.delta * resolvedRadius * 0.1;
@@ -99,6 +105,10 @@ export class OrbitControls extends EventDispatcher{
 		};
 
 		let touchMove = e => {
+			if(!this.doubleClockZoomEnabled){
+				return;
+			}
+
 			if (e.touches.length === 2 && previousTouch.touches.length === 2){
 				let prev = previousTouch;
 				let curr = e;
@@ -160,10 +170,10 @@ export class OrbitControls extends EventDispatcher{
 		this.radiusDelta = 0;
 		this.panDelta.set(0, 0);
 	}
-	
+
 	zoomToLocation(mouse){
 		let camera = this.scene.getActiveCamera();
-		
+
 		let I = Utils.getMousePointCloudIntersection(
 			mouse,
 			camera,
@@ -240,8 +250,10 @@ export class OrbitControls extends EventDispatcher{
 			let pitch = view.pitch;
 			let pivot = view.getPivot();
 
-			yaw -= progression * this.yawDelta;
-			pitch -= progression * this.pitchDelta;
+			// yaw -= progression * this.yawDelta;
+			// pitch -= progression * this.pitchDelta;
+			yaw -= this.direction * progression * this.yawDelta;
+			pitch -= this.direction * progression * this.pitchDelta;
 
 			view.yaw = yaw;
 			view.pitch = pitch;

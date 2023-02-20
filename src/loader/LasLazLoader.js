@@ -108,7 +108,7 @@ export class LasLazLoader {
 			lf.isOpen = false;
 		}catch(e){
 			console.error("failed to close las/laz file!!!");
-			
+
 			throw e;
 		}
 	}
@@ -183,7 +183,9 @@ export class LasLazBatcher{
 			buffer: lasBuffer.arrayb,
 			numPoints: lasBuffer.pointsCount,
 			pointSize: lasBuffer.pointSize,
-			pointFormatID: 2,
+			// pointFormatID: 2,
+			// expand to support others pointFormatID
+			pointFormatID: parseInt(lasBuffer.decoder.name),
 			scale: lasBuffer.scale,
 			offset: lasBuffer.offset,
 			mins: lasBuffer.mins,

@@ -59,7 +59,7 @@ class ProfileFakeOctree extends PointCloudTree{
 		this.pcoGeometry = octree.pcoGeometry;
 		this.points = [];
 		this.visibleNodes = [];
-		
+
 		//this.material = this.trueOctree.material;
 		this.material = new PointCloudMaterial();
 		//this.material.copy(this.trueOctree.material);
@@ -85,6 +85,10 @@ class ProfileFakeOctree extends PointCloudTree{
 	}
 
 	addPoints(data){
+		if (!data) {
+			return;
+		}
+
 		// since each call to addPoints can deliver very very few points,
 		// we're going to batch them into larger buffers for efficiency.
 
@@ -94,6 +98,9 @@ class ProfileFakeOctree extends PointCloudTree{
 
 		this.points.push(data);
 
+		if (!this.currentBatch) {
+			return;
+		}
 
 		let updateRange = {
 			start: this.currentBatch.geometry.drawRange.count,
@@ -138,13 +145,18 @@ class ProfileFakeOctree extends PointCloudTree{
 			projectedBox.expandByPoint(new THREE.Vector3(x, y, z));
 
 			let index = updateRange.start + updateRange.count;
+
+			if (!this.currentBatch) {
+				continue;
+			}
+
 			let geometry = this.currentBatch.geometry;
 
 			for(let attributeName of Object.keys(data.data)){
 				let source = data.data[attributeName];
 				let target = geometry.attributes[attributeName];
 				let numElements = target.itemSize;
-				
+
 				for(let item = 0; item < numElements; item++){
 					target.array[numElements * index + item] = source[numElements * i + item];
 				}
@@ -162,11 +174,13 @@ class ProfileFakeOctree extends PointCloudTree{
 			this.currentBatch.geometry.drawRange.count++;
 		}
 
-		for(let key of Object.keys(this.currentBatch.geometry.attributes)){
-			let attribute = this.currentBatch.geometry.attributes[key];
-			attribute.updateRange.offset = updateRange.start;
-			attribute.updateRange.count = updateRange.count;
-			attribute.needsUpdate = true;
+		if (this.currentBatch) {
+			for (let key of Object.keys(this.currentBatch.geometry.attributes)) {
+				let attribute = this.currentBatch.geometry.attributes[key];
+				attribute.updateRange.offset = updateRange.start;
+				attribute.updateRange.count = updateRange.count;
+				attribute.needsUpdate = true;
+			}
 		}
 
 		data.projectedBox = projectedBox;
@@ -175,6 +189,10 @@ class ProfileFakeOctree extends PointCloudTree{
 	}
 
 	createNewBatch(data){
+		if (!data) {
+			return;
+		}
+
 		let geometry = new THREE.BufferGeometry();
 
 		// create new batches with batch_size elements of the same type as the attribute
@@ -183,13 +201,13 @@ class ProfileFakeOctree extends PointCloudTree{
 			let numElements = buffer.length / data.numPoints; // 3 for pos, 4 for col, 1 for scalars
 			let constructor = buffer.constructor;
 			let normalized = false;
-			
+
 			if(this.trueOctree.root.sceneNode){
 				if(this.trueOctree.root.sceneNode.geometry.attributes[attributeName]){
 					normalized = this.trueOctree.root.sceneNode.geometry.attributes[attributeName].normalized;
 				}
 			}
-			
+
 
 			let batchBuffer = new constructor(numElements * this.batchSize);
 
@@ -210,7 +228,7 @@ class ProfileFakeOctree extends PointCloudTree{
 
 		return batch;
 	}
-	
+
 	computeVisibilityTextureData(){
 		let data = new Uint8Array(this.visibleNodes.length * 4);
 		let offsets = new Map();
@@ -256,7 +274,7 @@ export class ProfileWindow extends EventDispatcher {
 
 		let ccwIcon = `${exports.resourcePath}/icons/arrow_ccw.svg`;
 		$('#potree_profile_rotate_ccw').attr('src', ccwIcon);
-		
+
 		let forwardIcon = `${exports.resourcePath}/icons/arrow_up.svg`;
 		$('#potree_profile_move_forward').attr('src', forwardIcon);
 
@@ -284,7 +302,7 @@ export class ProfileWindow extends EventDispatcher {
 
 		this.pRenderer = new Renderer(this.renderer);
 
-		this.elRoot.i18n();
+		// this.elRoot.i18n();
 	}
 
 	initListeners () {
@@ -357,14 +375,14 @@ export class ProfileWindow extends EventDispatcher {
 					this.pickSphere.position.set(point.mileage, 0, position[2]);
 
 					this.viewerPickSphere.position.set(...position);
-					
+
 					if(!this.viewer.scene.scene.children.includes(this.viewerPickSphere)){
 						this.viewer.scene.scene.add(this.viewerPickSphere);
 						if(!this.viewer.hasEventListener("update", viewerPickSphereSizeHandler)){
 							this.viewer.addEventListener("update", viewerPickSphereSizeHandler);
 						}
 					}
-					
+
 
 					let info = this.elRoot.find('#profileSelectionProperties');
 					let html = '<table>';
@@ -382,9 +400,9 @@ export class ProfileWindow extends EventDispatcher {
 							transform = value => value / scale + offset;
 						}
 
-						
 
-						
+
+
 
 						if (attributeName === 'position') {
 							let values = [...position].map(v => Utils.addCommas(v.toFixed(3)));
@@ -438,7 +456,7 @@ export class ProfileWindow extends EventDispatcher {
 						this.viewer.scene.scene.children.splice(index, 1);
 					}
 					this.viewer.removeEventListener("update", viewerPickSphereSizeHandler);
-					
+
 
 				}
 				this.render();
@@ -487,7 +505,7 @@ export class ProfileWindow extends EventDispatcher {
 
 		let getProfilePoints = (truePosition) => {
 			let points = new Points();
-			
+
 			for(let [pointcloud, entry] of this.pointclouds){
 				for(let pointSet of entry.points){
 
@@ -513,7 +531,7 @@ export class ProfileWindow extends EventDispatcher {
 		};
 
 		$('#potree_download_dxf2D_icon').click(() => {
-			
+
 			const points = getProfilePoints();
 
 			const string = DXFProfileExporter.toString(points, true);
@@ -523,7 +541,7 @@ export class ProfileWindow extends EventDispatcher {
 		});
 
 		$('#potree_download_dxf3D_icon').click(() => {
-			
+
 			const points = getProfilePoints(true);
 
 			const string = DXFProfileExporter.toString(points);
@@ -533,7 +551,7 @@ export class ProfileWindow extends EventDispatcher {
 		});
 
 		$('#potree_download_csv_icon').click(() => {
-			
+
 			let points = getProfilePoints(true);
 
 			let string = CSVExporter.toString(points);
@@ -572,6 +590,10 @@ export class ProfileWindow extends EventDispatcher {
 
 		for (let [pointcloud, entry] of this.pointclouds) {
 			for(let points of entry.points){
+
+				if (!points.projectedBox) {
+					continue;
+				}
 
 				let collisionBox = new THREE.Box2(
 					new THREE.Vector2(points.projectedBox.min.x, points.projectedBox.min.z),
@@ -674,14 +696,14 @@ export class ProfileWindow extends EventDispatcher {
 				gl.createVertexArray = extVAO.createVertexArrayOES.bind(extVAO);
 				gl.bindVertexArray = extVAO.bindVertexArrayOES.bind(extVAO);
 			}
-			
+
 		}
 
 		this.camera = new THREE.OrthographicCamera(-1000, 1000, 1000, -1000, -1000, 1000);
 		this.camera.up.set(0, 0, 1);
 		this.camera.rotation.order = "ZXY";
 		this.camera.rotation.x = Math.PI / 2.0;
-	
+
 
 		this.scene = new THREE.Scene();
 		this.profileScene = new THREE.Scene();
@@ -762,7 +784,7 @@ export class ProfileWindow extends EventDispatcher {
 		entry.addPoints(points);
 		this.projectedBox.union(entry.projectedBox);
 
-		if (this.autoFit && this.autoFitEnabled) { 
+		if (this.autoFit && this.autoFitEnabled) {
 			let width = this.renderArea[0].clientWidth;
 			let height = this.renderArea[0].clientHeight;
 
@@ -876,7 +898,7 @@ export class ProfileWindow extends EventDispatcher {
 	requestScaleUpdate(){
 
 		let threshold = 100;
-		let allowUpdate = ((this.lastReset === undefined) || (this.lastScaleUpdate === undefined)) 
+		let allowUpdate = ((this.lastReset === undefined) || (this.lastScaleUpdate === undefined))
 			|| ((new Date().getTime() - this.lastReset) > threshold && (new Date().getTime() - this.lastScaleUpdate) > threshold);
 
 		if(allowUpdate){
@@ -885,14 +907,14 @@ export class ProfileWindow extends EventDispatcher {
 
 			this.lastScaleUpdate = new Date().getTime();
 
-			
+
 
 			this.scaleUpdatePending = false;
 		}else if(!this.scaleUpdatePending) {
 			setTimeout(this.requestScaleUpdate.bind(this), 100);
 			this.scaleUpdatePending = true;
 		}
-		
+
 	}
 
 	render () {
@@ -910,11 +932,11 @@ export class ProfileWindow extends EventDispatcher {
 		for(let pointcloud of this.pointclouds.keys()){
 			let source = pointcloud.material;
 			let target = this.pointclouds.get(pointcloud).material;
-			
+
 			copyMaterial(source, target);
 			target.size = 2;
 		}
-		
+
 		pRenderer.render(profileScene, camera, null);
 
 		let radius = Math.abs(scaleX.invert(0) - scaleX.invert(5));
@@ -925,7 +947,7 @@ export class ProfileWindow extends EventDispatcher {
 			pickSphere.scale.set(radius, radius, radius);
 			pickSphere.visible = true;
 		}
-		
+
 		renderer.render(scene, camera);
 
 		this.requestScaleUpdate();

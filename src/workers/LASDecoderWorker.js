@@ -209,7 +209,7 @@ function readUsingDataView(event) {
 	let returnNumbers = new Uint8Array(rnBuff);
 	let numberOfReturns = new Uint8Array(nrBuff);
 	let pointSourceIDs = new Uint16Array(psBuff);
-	
+
 	const rangeIntensity = [Infinity, -Infinity];
 	const rangeClassification = [Infinity, -Infinity];
 	const rangeReturnNumber = [Infinity, -Infinity];
@@ -273,6 +273,7 @@ function readUsingDataView(event) {
 		rangeSourceID[1] = Math.max(rangeSourceID[1], pointSourceID);
 
 		// COLOR, if available
+/*
 		if (pointFormatID === 2) {
 			let r = sourceView.getUint16(i * sourcePointSize + 20, true) / 256;
 			let g = sourceView.getUint16(i * sourcePointSize + 22, true) / 256;
@@ -283,6 +284,28 @@ function readUsingDataView(event) {
 			colors[4 * i + 2] = b;
 			colors[4 * i + 3] = 255;
 		}
+*/
+		// COLOR, if available
+		let startOffset = 0;
+
+		if (pointFormatID === 2) {
+			startOffset = 20;
+		}
+		if (pointFormatID === 3 || pointFormatID === 5) {
+			startOffset = 28;
+		}
+
+		if (startOffset > 0) {
+			const r = sourceView.getUint16(i * sourcePointSize + startOffset, true) / 256;
+			const g = sourceView.getUint16(i * sourcePointSize + startOffset + 2, true) / 256;
+			const b = sourceView.getUint16(i * sourcePointSize + startOffset + 4, true) / 256;
+
+			colors[4 * i + 0] = r;
+			colors[4 * i + 1] = g;
+			colors[4 * i + 2] = b;
+			colors[4 * i + 3] = 255;
+		}
+
 	}
 
 	let indices = new ArrayBuffer(numPoints * 4);
