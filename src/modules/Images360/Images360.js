@@ -15,7 +15,7 @@ let previousView = {
 	target: null,
 };
 
-const timeout = 0;
+const animationTimeout  = 0;
 
 export class Image360{
 	constructor(file, time, longitude, latitude, altitude, course, pitch, roll){
@@ -315,7 +315,7 @@ export class Images360 extends EventDispatcher{
 			viewer.scene.view.setView(
 				newCamPos,
 				target,
-				timeout
+				animationTimeout
 			);
 
 			this.focusedImage = image360;
@@ -360,7 +360,7 @@ export class Images360 extends EventDispatcher{
 		viewer.scene.view.setView(
 			previousView.position,
 			previousView.target,
-			timeout
+			animationTimeout
 		);
 
 		viewer.scene.dispatchEvent({
