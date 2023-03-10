@@ -622,7 +622,7 @@ export class Measure extends THREE.Object3D {
 				const camera = viewer.scene.getActiveCamera();
 				const frustum = new THREE.Frustum()
 				const matrix = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
-				frustum.setFromMatrix(matrix)
+				frustum.setFromProjectionMatrix(matrix)
 				coordinateLabel.visible = this.showCoordinates && frustum.containsPoint(position);
 			}
 

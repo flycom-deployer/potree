@@ -165,12 +165,6 @@ export class Images360 extends EventDispatcher{
 			this.update(viewer);
 		});
 		viewer.inputHandler.addInputListener(this);
-
-		this.addEventListener("mousedown", () => {
-			if(currentlyHovered){
-				this.focus(currentlyHovered.image360);
-			}
-		});
 	};
 
 	set visible(visible){
@@ -202,6 +196,10 @@ export class Images360 extends EventDispatcher{
 	}
 
 	async focus(image360){
+		if (!image360) {
+			return false;
+		}
+
 		this.isNavigation = image360.style === 'navigation';
 
 		if (this.focusedImage === null) {
