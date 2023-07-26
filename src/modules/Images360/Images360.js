@@ -357,11 +357,13 @@ export class Images360 extends EventDispatcher{
 		viewer.orbitControls.doubleClockZoomEnabled = true;
 		viewer.setControls(previousView.controls);
 
+		/* leave camera as it is
 		viewer.scene.view.setView(
 			previousView.position,
 			previousView.target,
 			animationTimeout
 		);
+		*/
 
 		viewer.scene.dispatchEvent({
 			type: '360_image_unfocus',
