@@ -923,7 +923,10 @@ export class Utils {
 			// if there is a projection, transform coordinates to WGS84
 			// and compute angle to north there
 
-			proj4.defs("pointcloud", projection);
+			// if a projection includes '+proj', then it is a projection string, otherwise, it is a projection name
+			const checkedProjection = projection.includes("+proj") ? projection : proj4.defs(projection);
+			proj4.defs("pointcloud", checkedProjection);
+
 			const transform = proj4("pointcloud", "WGS84");
 
 			const llP1 = transform.forward(p1.toArray());
