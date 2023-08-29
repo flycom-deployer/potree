@@ -34,7 +34,7 @@ import { ClassificationScheme } from "../materials/ClassificationScheme.js";
 import { VRButton } from '../../libs/three.js/extra/VRButton.js';
 
 import JSON5 from "../../libs/json5-2.1.3/json5.mjs";
-
+import { Loader3DTiles } from 'three-loader-3dtiles';
 
 export class Viewer extends EventDispatcher{
 
@@ -330,6 +330,22 @@ export class Viewer extends EventDispatcher{
 			this.onCrash(e);
 		}
 	}
+
+	async load3dTiles() {
+        console.log('load3dTiles');
+        const result = await Loader3DTiles.load({
+            url: 'https://gms.test/companies/mesh/Poplave_Savinja/tileset.json',
+            renderer: instance.viewer.renderer,
+            options: {
+                dracoDecoderPath: 'https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/libs/draco',
+                basisTranscoderPath: 'https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/libs/basis',
+            },
+        });
+
+        const { model, runtime } = result;
+
+        console.log(model, runtime);
+    }
 
 	onCrash(error){
 
