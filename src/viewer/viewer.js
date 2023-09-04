@@ -32,9 +32,10 @@ import {VRControls} from "../navigation/VRControls.js";
 import { EventDispatcher } from "../EventDispatcher.js";
 import { ClassificationScheme } from "../materials/ClassificationScheme.js";
 import { VRButton } from '../../libs/three.js/extra/VRButton.js';
+import {Clock, sRGBEncoding} from 'three';
 
 import JSON5 from "../../libs/json5-2.1.3/json5.mjs";
-import { Loader3DTiles } from 'three-loader-3dtiles';
+import { Loader3DTiles, PointCloudColoring } from 'three-loader-3dtiles';
 
 export class Viewer extends EventDispatcher{
 
@@ -331,20 +332,43 @@ export class Viewer extends EventDispatcher{
 		}
 	}
 
-	async load3dTiles() {
-        console.log('load3dTiles');
+	async load3dTiles(url, rotation, elevation) {
+		if (!url || this.tilesRuntime) {
+			return;
+		}
+
+		this.clock = new Clock();
+
         const result = await Loader3DTiles.load({
-            url: 'https://gms.test/companies/mesh/Poplave_Savinja/tileset.json',
-            renderer: instance.viewer.renderer,
+			url,
+            renderer: this.renderer,
             options: {
                 dracoDecoderPath: 'https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/libs/draco',
                 basisTranscoderPath: 'https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/libs/basis',
+				// debug: true, // uncomment for debuging tiles boxes
+				geoTransform: 2, // web mercator
             },
         });
 
         const { model, runtime } = result;
 
-        console.log(model, runtime);
+  		this.tilesRuntime = runtime;
+
+		const {x: rotX = 0, y: rotY = 0} = rotation || {};
+
+		model.rotation.x = rotX;
+		model.rotation.y = rotY;
+
+  		const EPSG3794 = '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs';
+  		const EPSG3857 = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs';
+		let [x,y] = window.proj4(EPSG3857, EPSG3794, [model.position.x, -model.position.z]);
+
+		model.position.set(x, y, elevation);
+
+		this.scene.scene.add(model);
+
+		// TODO: uncomment when debug = true
+		// this.scene.scene.add(runtime.getTileBoxes());
     }
 
 	onCrash(error){
@@ -1460,6 +1484,7 @@ export class Viewer extends EventDispatcher{
 		this.renderer.domElement.addEventListener('mousedown', () => {
 			this.renderer.domElement.focus();
 		});
+		this.renderer.outputEncoding = sRGBEncoding;
 		//this.renderer.domElement.focus();
 
 		// NOTE: If extension errors occur, pass the string into this.renderer.extensions.get(x) before enabling
@@ -2127,6 +2152,11 @@ export class Viewer extends EventDispatcher{
 		}
 
 		pRenderer.clear();
+
+		if (this.clock && this.tilesRuntime) {
+			const dt = this.clock.getDelta();
+    		this.tilesRuntime.update(dt, this.renderer, this.scene.getActiveCamera())
+  		}
 
 		pRenderer.render(this.renderer);
 		this.renderer.render(this.overlay, this.overlayCamera);
