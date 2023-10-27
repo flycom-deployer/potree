@@ -396,15 +396,49 @@ export class Utils {
 		return texture;
 	}
 
+	static getMouseIntersection(mouse, camera, viewer, pointclouds, params = {}) {
+		const sceneIntersection = this.getMouseSceneIntersection(mouse, camera, viewer, pointclouds, params)?.[0];
+		const pointCloudIntersection = this.getMousePointCloudIntersection(mouse, camera, viewer, pointclouds, params);
+
+		const isSceneIntersaction = !!sceneIntersection && !!pointCloudIntersection
+			? sceneIntersection.distance < pointCloudIntersection.distance
+			: !!sceneIntersection;
+
+		return isSceneIntersaction ?
+			{
+				location: sceneIntersection.point.clone(),
+				distance: sceneIntersection.distance,
+				pointcloud: undefined,
+				point: sceneIntersection.object.clone()
+			}
+			: pointCloudIntersection;
+	}
+
+	static getMouseSceneIntersection(mouse, camera, viewer, pointclouds, params = {}) {
+	 	let renderer = viewer.renderer;
+		let raycaster = new THREE.Raycaster();
+		raycaster.params.Line.threshold = 0.2;
+
+		let interactables = [];
+
+		viewer.scene.scene.traverseVisible(node => {
+			if (node.userData.canMeasure && node.visible) {
+				interactables.push(node);
+			}
+		});
+
+		let ray = Utils.mouseToRay(mouse, camera, renderer.domElement.clientWidth, renderer.domElement.clientHeight);
+
+		raycaster.ray.set(ray.origin, ray.direction);
+
+		return raycaster.intersectObjects(interactables, false);
+	}
 	static getMousePointCloudIntersection (mouse, camera, viewer, pointclouds, params = {}) {
-
 		let renderer = viewer.renderer;
-
 		let nmouse = {
 			x: (mouse.x / renderer.domElement.clientWidth) * 2 - 1,
 			y: -(mouse.y / renderer.domElement.clientHeight) * 2 + 1
 		};
-
 		let pickParams = {};
 
 		if(params.pickClipped){
@@ -540,20 +574,51 @@ export class Utils {
 	}
 
 	static mouseToRay(mouse, camera, width, height){
-
 		let normalizedMouse = {
 			x: (mouse.x / width) * 2 - 1,
 			y: -(mouse.y / height) * 2 + 1
 		};
 
-		let vector = new THREE.Vector3(normalizedMouse.x, normalizedMouse.y, 0.5);
-		let origin = camera.position.clone();
-		vector.unproject(camera);
-		let direction = new THREE.Vector3().subVectors(vector, origin).normalize();
+		let origin = new THREE.Vector3();
+		let direction = new THREE.Vector3();
+
+		if (camera.isPerspectiveCamera) {
+			origin.setFromMatrixPosition(camera.matrixWorld);
+			direction.set(normalizedMouse.x, normalizedMouse.y, 0.5).unproject(camera).sub(origin).normalize();
+		} else if (camera.isOrthographicCamera) {
+			origin.set(normalizedMouse.x, normalizedMouse.y, (camera.near + camera.far) / (camera.near - camera.far)).unproject(camera);
+			direction.set(0, 0, -1).transformDirection(camera.matrixWorld);
+		}
+
+		return new THREE.Ray(origin, direction);
+
+
+
+
+/*
+			let vector;
+			let origin;
+			let direction;
+
+		if(camera.type === 'PerspectiveCamera') {
+			vector = new THREE.Vector3(normalizedMouse.x, normalizedMouse.y, 0.5);
+			origin = camera.position.clone();
+			vector.unproject(camera);
+			direction = new THREE.Vector3().subVectors(vector, origin).normalize();
+		} else if(camera.type ==='OrthographicCamera') {
+// working for picking
+			vector = new THREE.Vector3(normalizedMouse.x, normalizedMouse.y, 1);
+			origin = new THREE.Vector3(normalizedMouse.x, normalizedMouse.y, 0);
+
+			vector.unproject(camera);
+			origin.unproject(camera);
+			direction = new THREE.Vector3().subVectors(vector, origin).normalize();
+		}
 
 		let ray = new THREE.Ray(origin, direction);
 
 		return ray;
+*/
 	}
 
 	static projectedRadius(radius, camera, distance, screenWidth, screenHeight){

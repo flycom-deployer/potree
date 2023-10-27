@@ -415,7 +415,20 @@ export class Measure extends THREE.Object3D {
 
 		{ // Event Listeners
 			let drag = (e) => {
-				let I = Utils.getMousePointCloudIntersection(
+/*
+				if (e.drag.interception) {
+					let i = this.spheres.indexOf(e.drag.object);
+
+					if (i !== -1) {
+						this.setPosition(i, e.drag.interception.clone());
+					}
+
+					return;
+				}
+*/
+
+				// let I = Utils.getMousePointCloudIntersection(
+				let I = Utils.getMouseIntersection(
 					e.drag.end,
 					e.viewer.scene.getActiveCamera(),
 					e.viewer,
@@ -427,15 +440,19 @@ export class Measure extends THREE.Object3D {
 					if (i !== -1) {
 						let point = this.points[i];
 
-						// loop through current keys and cleanup ones that will be orphaned
-						for (let key of Object.keys(point)) {
-							if (!I.point[key]) {
-								delete point[key];
+						if (!I.pointcloud) {
+							point = {};
+						} else {
+							// loop through current keys and cleanup ones that will be orphaned
+							for (let key of Object.keys(point)) {
+								if (!I.point[key]) {
+									delete point[key];
+								}
 							}
-						}
 
-						for (let key of Object.keys(I.point).filter(e => e !== 'position')) {
-							point[key] = I.point[key];
+							for (let key of Object.keys(I.point).filter(e => e !== 'position')) {
+								point[key] = I.point[key];
+							}
 						}
 
 						this.setPosition(i, I.location);

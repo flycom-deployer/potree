@@ -21,6 +21,8 @@ export class EarthControls extends EventDispatcher {
 		this.zoomDelta = new THREE.Vector3();
 		this.camStart = null;
 
+		this.panDelta = new THREE.Vector2(0, 0);
+
 		this.tweens = [];
 
 		{
@@ -57,31 +59,71 @@ export class EarthControls extends EventDispatcher {
 			if (e.drag.mouse === MOUSE.LEFT) {
 
 				let ray = Utils.mouseToRay(mouse, camera, domElement.clientWidth, domElement.clientHeight);
-				let plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
-					new THREE.Vector3(0, 0, 1),
-					this.pivot);
 
-				let distanceToPlane = ray.distanceToPlane(plane);
+				if ( camera.isPerspectiveCamera ) {
+					let plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+						new THREE.Vector3(0, 0, 1),
+						this.pivot);
 
-				if (distanceToPlane > 0) {
-					let I = new THREE.Vector3().addVectors(
-						camStart.position,
-						ray.direction.clone().multiplyScalar(distanceToPlane));
+					let distanceToPlane = ray.distanceToPlane(plane);
 
-					let movedBy = new THREE.Vector3().subVectors(
-						I, this.pivot);
+					if (distanceToPlane > 0) {
+						let I = new THREE.Vector3().addVectors(
+							camStart.position,
+							ray.direction.clone().multiplyScalar(distanceToPlane));
+						let movedBy = new THREE.Vector3().subVectors(
+							I, this.pivot);
 
-					let newCamPos = camStart.position.clone().sub(movedBy);
+						let newCamPos = camStart.position.clone().sub(movedBy);
+						view.position.copy(newCamPos);
 
-					view.position.copy(newCamPos);
-
-					{
-						let distance = newCamPos.distanceTo(this.pivot);
-						view.radius = distance;
-						let speed = view.radius / 2.5;
-						this.viewer.setMoveSpeed(speed);
+						{
+							let distance = newCamPos.distanceTo(this.pivot);
+							view.radius = distance;
+							let speed = view.radius / 2.5;
+							this.viewer.setMoveSpeed(speed);
+						}
 					}
+				} else if ( camera.isOrthographicCamera ) {
+					let ndrag = {
+						x: e.drag.lastDrag.x / this.renderer.domElement.clientWidth,
+						y: e.drag.lastDrag.y / this.renderer.domElement.clientHeight
+					};
+					this.panDelta.x += ndrag.x;
+					this.panDelta.y += ndrag.y;
+					this.panDelta.x = ndrag.x;
+					this.panDelta.y = ndrag.y;
+
+
+					let V = new THREE.Vector3().subVectors(this.pivot.clone(), ray.origin.clone());
+					let D_normalized = ray.direction.clone().normalize();
+					let V_proj = D_normalized.multiplyScalar(V.dot(D_normalized));
+					let V_perp = new THREE.Vector3().subVectors(V, V_proj);
+
+							// let panDistance = V_perp.length();
+							let panDistance = view.radius * 2;
+					let px = -this.panDelta.x * panDistance;
+					let py = this.panDelta.y * panDistance;
+
+								view.pan(px, py);
+
+/*
+    						let newCamPos = camStart.position.clone().add(V_perp);
+						console.log('newCamPos', newCamPos.clone());
+						view.position.copy(newCamPos);
+*/
+
+						{
+							// let distance = newCamPos.distanceTo(this.pivot);
+/*
+							let distance = V_perp.length();
+							view.radius = distance;
+							let speed = view.radius / 2.5;
+							this.viewer.setMoveSpeed(speed);
+*/
+						}
 				}
+
 			} else if (e.drag.mouse === MOUSE.RIGHT) {
 				let ndrag = {
 					x: e.drag.lastDrag.x / this.renderer.domElement.clientWidth,
@@ -116,12 +158,21 @@ export class EarthControls extends EventDispatcher {
 		};
 
 		let onMouseDown = e => {
-			let I = Utils.getMousePointCloudIntersection(
-				e.mouse, 
-				this.scene.getActiveCamera(), 
-				this.viewer, 
-				this.scene.pointclouds, 
+			let I = Utils.getMouseIntersection(
+				e.mouse,
+				this.scene.getActiveCamera(),
+				this.viewer,
+				this.scene.pointclouds,
 				{pickClipped: false});
+
+/*
+			let I = Utils.getMousePointCloudIntersection(
+				e.mouse,
+				this.scene.getActiveCamera(),
+				this.viewer,
+				this.scene.pointclouds,
+				{pickClipped: false});
+*/
 
 			if (I) {
 				this.pivot = I.location;
@@ -139,10 +190,11 @@ export class EarthControls extends EventDispatcher {
 			this.camStart = null;
 			this.pivot = null;
 			this.pivotIndicator.visible = false;
+			this.panDelta.set(0, 0);
 		};
 
 		let scroll = (e) => {
-			this.wheelDelta += e.delta;
+			this.wheelDelta += (e.delta * .5);
 		};
 
 		let dblclick = (e) => {
@@ -165,11 +217,12 @@ export class EarthControls extends EventDispatcher {
 		this.wheelDelta = 0;
 		this.zoomDelta.set(0, 0, 0);
 	}
-	
+
 	zoomToLocation(mouse){
 		let camera = this.scene.getActiveCamera();
-		
-		let I = Utils.getMousePointCloudIntersection(
+
+		// let I = Utils.getMousePointCloudIntersection(
+		let I = Utils.getMouseIntersection(
 			mouse,
 			camera,
 			this.viewer,
@@ -180,18 +233,22 @@ export class EarthControls extends EventDispatcher {
 		}
 
 		let targetRadius = 0;
-		{
-			let minimumJumpDistance = 0.2;
+		let minimumJumpDistance = 0.2;
+		let radius;
 
+		if (!I.pointcloud) {
+			radius = I.point?.geometry?.boundingSphere?.radius || 0;
+		} else {
 			let domElement = this.renderer.domElement;
 			let ray = Utils.mouseToRay(mouse, camera, domElement.clientWidth, domElement.clientHeight);
 
 			let nodes = I.pointcloud.nodesOnRay(I.pointcloud.visibleNodes, ray);
 			let lastNode = nodes[nodes.length - 1];
-			let radius = lastNode.getBoundingSphere(new THREE.Sphere()).radius;
-			targetRadius = Math.min(this.scene.view.radius, radius);
-			targetRadius = Math.max(minimumJumpDistance, targetRadius);
+			radius = lastNode.getBoundingSphere(new THREE.Sphere()).radius;
 		}
+
+		targetRadius = Math.min(this.scene.view.radius, radius);
+		targetRadius = Math.max(minimumJumpDistance, targetRadius);
 
 		let d = this.scene.view.direction.multiplyScalar(-1);
 		let cameraTargetPosition = new THREE.Vector3().addVectors(I.location, d.multiplyScalar(targetRadius));
@@ -234,13 +291,14 @@ export class EarthControls extends EventDispatcher {
 		let fade = Math.pow(0.5, this.fadeFactor * delta);
 		let progression = 1 - fade;
 		let camera = this.scene.getActiveCamera();
-		
+
 		// compute zoom
 		if (this.wheelDelta !== 0) {
-			let I = Utils.getMousePointCloudIntersection(
-				this.viewer.inputHandler.mouse, 
-				this.scene.getActiveCamera(), 
-				this.viewer, 
+			//let I = Utils.getMousePointCloudIntersection(
+			let I = Utils.getMouseIntersection(
+				this.viewer.inputHandler.mouse,
+				this.scene.getActiveCamera(),
+				this.viewer,
 				this.scene.pointclouds);
 
 			if (I) {

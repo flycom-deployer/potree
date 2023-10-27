@@ -17,7 +17,7 @@ export class InputHandler extends EventDispatcher {
 		this.renderer = viewer.renderer;
 		this.domElement = this.renderer.domElement;
 		this.enabled = true;
-		
+
 		this.scene = null;
 		this.interactiveScenes = [];
 		this.interactiveObjects = new Set();
@@ -88,7 +88,7 @@ export class InputHandler extends EventDispatcher {
 			this.startDragging(null);
 		}
 
-		
+
 		for (let inputListener of this.getSortedListeners()) {
 			inputListener.dispatchEvent({
 				type: e.type,
@@ -269,7 +269,8 @@ export class InputHandler extends EventDispatcher {
 				object.dispatchEvent({
 					type: 'mousedown',
 					viewer: this.viewer,
-					consume: consume
+					consume: consume,
+					mouse: this.mouse
 				});
 
 				if(consumed){
@@ -304,7 +305,7 @@ export class InputHandler extends EventDispatcher {
 
 		let noMovement = this.getNormalizedDrag().length() === 0;
 
-		
+
 		let consumed = false;
 		let consume = () => { return consumed = true; };
 		if (this.hoveredElements.length === 0) {
@@ -415,8 +416,17 @@ export class InputHandler extends EventDispatcher {
 
 			this.drag.end.set(x, y);
 
+/*
+			let point;
+			const element = hoveredElements.find(mesh => mesh.object.userData.canMeasure);
+			point = element?.point;
+
+			this.drag.interception = point ? point.clone() : undefined;
+*/
+
 			if (this.drag.object) {
 				if (this.logMessages) console.log(this.constructor.name + ': drag: ' + this.drag.object.name);
+
 				this.drag.object.dispatchEvent({
 					type: 'drag',
 					drag: this.drag,
@@ -464,7 +474,7 @@ export class InputHandler extends EventDispatcher {
 				let object = hoveredElements
 					.map(e => e.object)
 					.find(e => (e._listeners && e._listeners['mousemove']));
-				
+
 				if(object){
 					object.dispatchEvent({
 						type: 'mousemove',
@@ -474,23 +484,23 @@ export class InputHandler extends EventDispatcher {
 			}
 
 		}
-		
+
 		// for (let inputListener of this.getSortedListeners()) {
 		// 	inputListener.dispatchEvent({
 		// 		type: 'mousemove',
 		// 		object: null
 		// 	});
 		// }
-		
+
 
 		this.hoveredElements = hoveredElements;
 	}
-	
+
 	onMouseWheel(e){
 		if(!this.enabled) return;
 
 		if(this.logMessages) console.log(this.constructor.name + ": onMouseWheel");
-		
+
 		e.preventDefault();
 
 		let delta = 0;
@@ -543,9 +553,9 @@ export class InputHandler extends EventDispatcher {
 
 	getMousePointCloudIntersection (mouse) {
 		return Utils.getMousePointCloudIntersection(
-			this.mouse, 
-			this.scene.getActiveCamera(), 
-			this.viewer, 
+			this.mouse,
+			this.scene.getActiveCamera(),
+			this.viewer,
 			this.scene.pointclouds);
 	}
 
@@ -651,9 +661,9 @@ export class InputHandler extends EventDispatcher {
 
 	getHoveredElements () {
 		let scenes = this.interactiveScenes.concat(this.scene.scene);
-
 		let interactableListeners = ['mouseup', 'mousemove', 'mouseover', 'mouseleave', 'drag', 'drop', 'click', 'select', 'deselect'];
 		let interactables = [];
+
 		for (let scene of scenes) {
 			scene.traverseVisible(node => {
 				if (node._listeners && node.visible && !this.blacklist.has(node)) {
@@ -667,10 +677,10 @@ export class InputHandler extends EventDispatcher {
 				}
 			});
 		}
-		
+
 		let camera = this.scene.getActiveCamera();
 		let ray = Utils.mouseToRay(this.mouse, camera, this.domElement.clientWidth, this.domElement.clientHeight);
-		
+
 		let raycaster = new THREE.Raycaster();
 		raycaster.ray.set(ray.origin, ray.direction);
 		raycaster.params.Line.threshold = 0.2;

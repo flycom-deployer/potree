@@ -84,7 +84,7 @@ export class OrbitControls extends EventDispatcher{
 
 			let resolvedRadius = this.scene.view.radius + this.radiusDelta;
 
-			this.radiusDelta += -e.delta * resolvedRadius * 0.1;
+			this.radiusDelta += -e.delta * resolvedRadius * 0.05;
 
 			this.stopTweens();
 		};
@@ -186,18 +186,22 @@ export class OrbitControls extends EventDispatcher{
 		}
 
 		let targetRadius = 0;
-		{
-			let minimumJumpDistance = 0.2;
+		let minimumJumpDistance = 0.2;
+		let radius;
 
+		if (!I.pointcloud) {
+			radius = I.point?.geometry?.boundingSphere?.radius || 0;
+		} else {
 			let domElement = this.renderer.domElement;
 			let ray = Utils.mouseToRay(mouse, camera, domElement.clientWidth, domElement.clientHeight);
 
 			let nodes = I.pointcloud.nodesOnRay(I.pointcloud.visibleNodes, ray);
 			let lastNode = nodes[nodes.length - 1];
-			let radius = lastNode.getBoundingSphere(new THREE.Sphere()).radius;
-			targetRadius = Math.min(this.scene.view.radius, radius);
-			targetRadius = Math.max(minimumJumpDistance, targetRadius);
+			radius = lastNode.getBoundingSphere(new THREE.Sphere()).radius;
 		}
+
+		targetRadius = Math.min(this.scene.view.radius, radius);
+		targetRadius = Math.max(minimumJumpDistance, targetRadius);
 
 		let d = this.scene.view.direction.multiplyScalar(-1);
 		let cameraTargetPosition = new THREE.Vector3().addVectors(I.location, d.multiplyScalar(targetRadius));
