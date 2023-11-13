@@ -190,7 +190,11 @@ export class OrbitControls extends EventDispatcher{
 		let radius;
 
 		if (!I.pointcloud) {
-			radius = I.point?.geometry?.boundingSphere?.radius || 0;
+			radius = 0;
+
+			if (I.point && I.point.geometry && I.point.geometry.boundingSphere) {
+				radius = I.point.geometry.boundingSphere.radius;
+			}
 		} else {
 			let domElement = this.renderer.domElement;
 			let ray = Utils.mouseToRay(mouse, camera, domElement.clientWidth, domElement.clientHeight);

@@ -397,7 +397,13 @@ export class Utils {
 	}
 
 	static getMouseIntersection(mouse, camera, viewer, pointclouds, params = {}) {
-		const sceneIntersection = this.getMouseSceneIntersection(mouse, camera, viewer, pointclouds, params)?.[0];
+		const sceneIntersectionResult = this.getMouseSceneIntersection(mouse, camera, viewer, pointclouds, params);
+
+		let sceneIntersection = undefined;
+		if (sceneIntersectionResult && sceneIntersectionResult.length > 0) {
+			sceneIntersection = sceneIntersectionResult[0];
+		}
+
 		const pointCloudIntersection = this.getMousePointCloudIntersection(mouse, camera, viewer, pointclouds, params);
 
 		const isSceneIntersaction = !!sceneIntersection && !!pointCloudIntersection
