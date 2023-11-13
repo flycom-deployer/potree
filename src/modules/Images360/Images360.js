@@ -252,13 +252,13 @@ export class Images360 extends EventDispatcher{
 			this.sphere.material.map = image360.texture;
 			this.sphere.material.needsUpdate = true;
 
+			let {course, pitch, roll} = image360;
+
 			{ // orientation
-				let {course, pitch, roll} = image360;
 
 				// if no rotation data, set the camera course(yaw) to the center of the image
-				// 5 x camera; 360 / 5 = 72; 72 / 2 = 36 => 180 + 36
 				if (course === 0 && pitch === 0 && roll === 0) {
-					course = -(180 + 36);
+					course = -180;
 				}
 
 				this.sphere.rotation.set(
@@ -267,6 +267,8 @@ export class Images360 extends EventDispatcher{
 					THREE.Math.degToRad(-course + 90),
 					"ZYX"
 				);
+
+				this.sphere.updateMatrixWorld();
 			}
 
 			this.sphere.position.set(...image360.position);
@@ -297,15 +299,11 @@ export class Images360 extends EventDispatcher{
 						this.viewer.setFOV(20);
 					}
 				} else {
-					const cameraPosition = this.viewer.scene.view.position.clone();
-					const cameraTarget = this.viewer.scene.view.getPivot();
+					const localTargetPoint = new THREE.Vector3(1, 0, 0);
+					const worldTargetPoint = localTargetPoint.applyMatrix4(this.sphere.matrixWorld);
 
-					if (!this.focusedImage) {
-						cameraPosition.z = 0;
-						cameraTarget.z = 0;
-					}
-
-					dir = cameraTarget.clone().sub(cameraPosition).normalize();
+					dir = new THREE.Vector3().subVectors(worldTargetPoint, target);
+					dir.normalize();
 				}
 			}
 

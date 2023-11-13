@@ -366,9 +366,6 @@ export class Viewer extends EventDispatcher{
 		model.position.set(x, y, elevation);
 
 		this.scene.scene.add(model);
-
-		// TODO: uncomment when debug = true
-		// this.scene.scene.add(runtime.getTileBoxes());
     }
 
 	onCrash(error){
@@ -1484,7 +1481,8 @@ export class Viewer extends EventDispatcher{
 		this.renderer.domElement.addEventListener('mousedown', () => {
 			this.renderer.domElement.focus();
 		});
-		this.renderer.outputEncoding = sRGBEncoding;
+		// uncomment and check when 3d tiles are activated
+		// this.renderer.outputEncoding = sRGBEncoding;
 		//this.renderer.domElement.focus();
 
 		// NOTE: If extension errors occur, pass the string into this.renderer.extensions.get(x) before enabling
