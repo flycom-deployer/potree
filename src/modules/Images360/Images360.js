@@ -258,7 +258,7 @@ export class Images360 extends EventDispatcher{
 				// if no rotation data, set the camera course(yaw) to the center of the image
 				// 5 x camera; 360 / 5 = 72; 72 / 2 = 36 => 180 + 36
 				if (course === 0 && pitch === 0 && roll === 0) {
-					course = -(180 + 36);
+					course = -180;
 				}
 
 				this.sphere.rotation.set(
@@ -270,6 +270,7 @@ export class Images360 extends EventDispatcher{
 			}
 
 			this.sphere.position.set(...image360.position);
+			this.sphere.updateMatrixWorld();
 
 			let target = new THREE.Vector3(...image360.position);
 
@@ -297,6 +298,13 @@ export class Images360 extends EventDispatcher{
 						this.viewer.setFOV(20);
 					}
 				} else {
+					const localTargetPoint = new THREE.Vector3(1, 0, 0);
+					const worldTargetPoint = localTargetPoint.applyMatrix4(this.sphere.matrixWorld);
+
+					dir = new THREE.Vector3().subVectors(worldTargetPoint, target);
+					dir.normalize();
+
+/*
 					const cameraPosition = this.viewer.scene.view.position.clone();
 					const cameraTarget = this.viewer.scene.view.getPivot();
 
@@ -306,6 +314,7 @@ export class Images360 extends EventDispatcher{
 					}
 
 					dir = cameraTarget.clone().sub(cameraPosition).normalize();
+*/
 				}
 			}
 
