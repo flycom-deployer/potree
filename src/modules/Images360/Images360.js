@@ -297,15 +297,28 @@ export class Images360 extends EventDispatcher{
 						this.viewer.setFOV(20);
 					}
 				} else {
-					const cameraPosition = this.viewer.scene.view.position.clone();
-					const cameraTarget = this.viewer.scene.view.getPivot();
+					if (this.isNavigation) {
+						const cameraPosition = this.viewer.scene.view.position.clone();
+						const cameraTarget = this.viewer.scene.view.getPivot();
 
-					if (!this.focusedImage) {
-						cameraPosition.z = 0;
-						cameraTarget.z = 0;
+						if (!this.focusedImage) {
+							cameraPosition.z = 0;
+							cameraTarget.z = 0;
+						}
+
+						dir = cameraTarget.clone().sub(cameraPosition).normalize();
+					} else {
+						// Original target point in the sphere's local coordinates (middle of the texture)
+						const localTargetPoint = new THREE.Vector3(1, 0, 0);
+
+								this.sphere.updateMatrixWorld();
+						// Transform the local target point to world coordinates
+						const worldTargetPoint = localTargetPoint.applyMatrix4(this.sphere.matrixWorld);
+
+						// Calculate the direction vector from the camera to the target point in world coordinates
+						dir = new THREE.Vector3().subVectors(worldTargetPoint, target);
+						dir.normalize();
 					}
-
-					dir = cameraTarget.clone().sub(cameraPosition).normalize();
 				}
 			}
 
