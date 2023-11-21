@@ -252,13 +252,13 @@ export class Images360 extends EventDispatcher{
 			this.sphere.material.map = image360.texture;
 			this.sphere.material.needsUpdate = true;
 
-			let {course, pitch, roll} = image360;
-
 			{ // orientation
+				let {course, pitch, roll} = image360;
 
 				// if no rotation data, set the camera course(yaw) to the center of the image
+				// 5 x camera; 360 / 5 = 72; 72 / 2 = 36 => 180 + 36
 				if (course === 0 && pitch === 0 && roll === 0) {
-					course = -180;
+					course = -(180 + 36);
 				}
 
 				this.sphere.rotation.set(
@@ -267,8 +267,6 @@ export class Images360 extends EventDispatcher{
 					THREE.Math.degToRad(-course + 90),
 					"ZYX"
 				);
-
-				this.sphere.updateMatrixWorld();
 			}
 
 			this.sphere.position.set(...image360.position);
@@ -299,11 +297,28 @@ export class Images360 extends EventDispatcher{
 						this.viewer.setFOV(20);
 					}
 				} else {
-					const localTargetPoint = new THREE.Vector3(1, 0, 0);
-					const worldTargetPoint = localTargetPoint.applyMatrix4(this.sphere.matrixWorld);
+					if (this.isNavigation) {
+						const cameraPosition = this.viewer.scene.view.position.clone();
+						const cameraTarget = this.viewer.scene.view.getPivot();
 
-					dir = new THREE.Vector3().subVectors(worldTargetPoint, target);
-					dir.normalize();
+						if (!this.focusedImage) {
+							cameraPosition.z = 0;
+							cameraTarget.z = 0;
+						}
+
+						dir = cameraTarget.clone().sub(cameraPosition).normalize();
+					} else {
+						// Original target point in the sphere's local coordinates (middle of the texture)
+						const localTargetPoint = new THREE.Vector3(1, 0, 0);
+
+								this.sphere.updateMatrixWorld();
+						// Transform the local target point to world coordinates
+						const worldTargetPoint = localTargetPoint.applyMatrix4(this.sphere.matrixWorld);
+
+						// Calculate the direction vector from the camera to the target point in world coordinates
+						dir = new THREE.Vector3().subVectors(worldTargetPoint, target);
+						dir.normalize();
+					}
 				}
 			}
 
@@ -467,17 +482,39 @@ export class Images360 extends EventDispatcher{
 	}
 
 	load(image360){
-		return new Promise(resolve => {
-			if (image360.texture) {
-				resolve(true);
-			} else {
-				let texture = new THREE.TextureLoader().load(image360.file, resolve);
-				texture.wrapS = THREE.RepeatWrapping;
-				texture.repeat.x = -1;
+		return new Promise((resolve, reject) => {
+				if (image360.texture) {
+					resolve(true);
+				} else {
+					const loader = new THREE.TextureLoader();
 
-				image360.texture = texture;
-			}
-		});
+					const onLoad = texture => {
+						texture.wrapS = THREE.RepeatWrapping;
+						texture.repeat.x = -1;
+						image360.texture = texture;
+						resolve(true);
+					};
+
+					const onError = error => {
+						// Create a canvas to draw text "No Image"
+						const canvas = document.createElement('canvas');
+						canvas.width = 256;  // Size of the canvas
+						canvas.height = 256;
+						const context = canvas.getContext('2d');
+
+						// Fill background if needed
+						context.fillStyle = '#000';  // Background color
+						context.fillRect(0, 0, canvas.width, canvas.height);
+
+						const fallbackTexture = new THREE.CanvasTexture(canvas);
+						image360.texture = fallbackTexture;
+
+						resolve(true);  // resolve with the fallback texture
+					};
+
+					loader.load(image360.file, onLoad, undefined, onError);
+				}
+			});
 	}
 
 	handleHovering(){

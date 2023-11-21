@@ -1,4 +1,3 @@
-
 import * as THREE from "../../libs/three.js/build/three.module.js";
 import {ClipTask, ClipMethod, CameraMode, LengthUnits, ElevationGradientRepeat} from "../defines.js";
 import {Renderer} from "../PotreeRenderer.js";
@@ -35,7 +34,7 @@ import { VRButton } from '../../libs/three.js/extra/VRButton.js';
 import {Clock, sRGBEncoding} from 'three';
 
 import JSON5 from "../../libs/json5-2.1.3/json5.mjs";
-import { Loader3DTiles, PointCloudColoring } from 'three-loader-3dtiles';
+import { Loader3DTiles } from 'three-loader-3dtiles';
 
 export class Viewer extends EventDispatcher{
 
@@ -345,7 +344,7 @@ export class Viewer extends EventDispatcher{
             options: {
                 dracoDecoderPath: 'https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/libs/draco',
                 basisTranscoderPath: 'https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/libs/basis',
-				// debug: true, // uncomment for debuging tiles boxes
+				debug: false, // uncomment for debuging tiles boxes
 				geoTransform: 2, // web mercator
             },
         });

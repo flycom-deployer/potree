@@ -416,14 +416,6 @@ export class InputHandler extends EventDispatcher {
 
 			this.drag.end.set(x, y);
 
-/*
-			let point;
-			const element = hoveredElements.find(mesh => mesh.object.userData.canMeasure);
-			point = element?.point;
-
-			this.drag.interception = point ? point.clone() : undefined;
-*/
-
 			if (this.drag.object) {
 				if (this.logMessages) console.log(this.constructor.name + ': drag: ' + this.drag.object.name);
 

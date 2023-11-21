@@ -100,28 +100,11 @@ export class EarthControls extends EventDispatcher {
 					let V_proj = D_normalized.multiplyScalar(V.dot(D_normalized));
 					let V_perp = new THREE.Vector3().subVectors(V, V_proj);
 
-							// let panDistance = V_perp.length();
-							let panDistance = view.radius * 2;
+					let panDistance = view.radius * 2;
 					let px = -this.panDelta.x * panDistance;
 					let py = this.panDelta.y * panDistance;
 
-								view.pan(px, py);
-
-/*
-    						let newCamPos = camStart.position.clone().add(V_perp);
-						console.log('newCamPos', newCamPos.clone());
-						view.position.copy(newCamPos);
-*/
-
-						{
-							// let distance = newCamPos.distanceTo(this.pivot);
-/*
-							let distance = V_perp.length();
-							view.radius = distance;
-							let speed = view.radius / 2.5;
-							this.viewer.setMoveSpeed(speed);
-*/
-						}
+					view.pan(px, py);
 				}
 
 			} else if (e.drag.mouse === MOUSE.RIGHT) {
@@ -164,15 +147,6 @@ export class EarthControls extends EventDispatcher {
 				this.viewer,
 				this.scene.pointclouds,
 				{pickClipped: false});
-
-/*
-			let I = Utils.getMousePointCloudIntersection(
-				e.mouse,
-				this.scene.getActiveCamera(),
-				this.viewer,
-				this.scene.pointclouds,
-				{pickClipped: false});
-*/
 
 			if (I) {
 				this.pivot = I.location;

@@ -415,19 +415,6 @@ export class Measure extends THREE.Object3D {
 
 		{ // Event Listeners
 			let drag = (e) => {
-/*
-				if (e.drag.interception) {
-					let i = this.spheres.indexOf(e.drag.object);
-
-					if (i !== -1) {
-						this.setPosition(i, e.drag.interception.clone());
-					}
-
-					return;
-				}
-*/
-
-				// let I = Utils.getMousePointCloudIntersection(
 				let I = Utils.getMouseIntersection(
 					e.drag.end,
 					e.viewer.scene.getActiveCamera(),
