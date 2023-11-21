@@ -292,10 +292,6 @@ export class Images360 extends EventDispatcher{
 
 					// set point cloud opacity
                     this.viewer.setEDLOpacity(0);
-
-                    if (panoramaTargetZoomIn && this.viewer.getFOV() > 20) {
-						this.viewer.setFOV(20);
-					}
 				} else {
 					if (this.isNavigation) {
 						const cameraPosition = this.viewer.scene.view.position.clone();
