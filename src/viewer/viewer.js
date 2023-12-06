@@ -331,7 +331,7 @@ export class Viewer extends EventDispatcher{
 		}
 	}
 
-	async load3dTiles(url, rotation, elevation) {
+	async load3dTiles(url, rotation, elevation, group = '3D tiles') {
 		if (!url || this.tilesRuntime) {
 			return;
 		}
@@ -363,8 +363,25 @@ export class Viewer extends EventDispatcher{
 		let [x,y] = window.proj4(EPSG3857, EPSG3794, [model.position.x, -model.position.z]);
 
 		model.position.set(x, y, elevation);
+		model.userData.group = group;
 
 		this.scene.scene.add(model);
+
+		const camTarget = new THREE.Vector3(
+			parseInt(x, 10),
+			parseInt(y, 10),
+			parseInt(elevation, 10)
+		);
+
+		if (!isFinite(camTarget.x) || !isFinite(camTarget.y) || !isFinite(camTarget.z)) {
+			console.error('Invalid target coordinates');
+			return;
+		}
+
+		const camPos = new THREE.Vector3().copy(camTarget).add(new THREE.Vector3(0, 0, 1000));
+
+		this.scene.view.position.copy(camPos);
+		this.scene.view.lookAt(camTarget);
     }
 
 	onCrash(error){
