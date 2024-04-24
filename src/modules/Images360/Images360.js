@@ -1,4 +1,5 @@
 import { EventDispatcher } from "../../EventDispatcher.js";
+import * as THREE from "../../../libs/three.js/build/three.module.js";
 
 let sg = new THREE.SphereGeometry(1, 16, 8);
 let sgHigh = new THREE.SphereGeometry(1, 64, 32);

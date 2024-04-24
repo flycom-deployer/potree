@@ -42,18 +42,18 @@ void main() {
 	vec3 color = vColor;
 	float depth = gl_FragCoord.z;
 
-	#if defined(circle_point_shape) || defined(paraboloid_point_shape) 
+	#if defined(circle_point_shape) || defined(paraboloid_point_shape)
 		float u = 2.0 * gl_PointCoord.x - 1.0;
 		float v = 2.0 * gl_PointCoord.y - 1.0;
 	#endif
-	
-	#if defined(circle_point_shape) 
+
+	#if defined(circle_point_shape)
 		float cc = u*u + v*v;
 		if(cc > 1.0){
 			discard;
 		}
 	#endif
-		
+
 	#if defined color_type_indices
 		gl_FragColor = vec4(color, uPCIndex / 255.0);
 	#else
@@ -69,17 +69,20 @@ void main() {
 		pos = pos / pos.w;
 		float expDepth = pos.z;
 		depth = (pos.z + 1.0) / 2.0;
-		gl_FragDepthEXT = depth;
-		
+
+		#if defined(GL_EXT_frag_depth)
+		    gl_FragDepthEXT = depth;
+        #endif
+
 		#if defined(color_type_depth)
 			color.r = linearDepth;
 			color.g = expDepth;
 		#endif
-		
+
 		#if defined(use_edl)
 			gl_FragColor.a = log2(linearDepth);
 		#endif
-		
+
 	#else
 		#if defined(use_edl)
 			gl_FragColor.a = vLogDepth;
@@ -96,7 +99,7 @@ void main() {
 	#endif
 
 	//gl_FragColor = vec4(0.0, 0.7, 0.0, 1.0);
-	
+
 }
 
 

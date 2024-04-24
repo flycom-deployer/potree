@@ -31,7 +31,6 @@ import {VRControls} from "../navigation/VRControls.js";
 import { EventDispatcher } from "../EventDispatcher.js";
 import { ClassificationScheme } from "../materials/ClassificationScheme.js";
 import { VRButton } from '../../libs/three.js/extra/VRButton.js';
-import {Clock, sRGBEncoding} from 'three';
 
 import JSON5 from "../../libs/json5-2.1.3/json5.mjs";
 import { Loader3DTiles } from 'three-loader-3dtiles';
@@ -336,7 +335,7 @@ export class Viewer extends EventDispatcher{
 			return;
 		}
 
-		this.clock = new Clock();
+		this.clock = new THREE.Clock();
 
         const result = await Loader3DTiles.load({
 			url,
@@ -1498,7 +1497,7 @@ export class Viewer extends EventDispatcher{
 			this.renderer.domElement.focus();
 		});
 		// uncomment and check when 3d tiles are activated
-		// this.renderer.outputEncoding = sRGBEncoding;
+		// this.renderer.outputEncoding = THREE.sRGBEncoding;
 		//this.renderer.domElement.focus();
 
 		// NOTE: If extension errors occur, pass the string into this.renderer.extensions.get(x) before enabling

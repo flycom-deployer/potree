@@ -1,3 +1,4 @@
+import resolve from '@rollup/plugin-node-resolve';
 export default [
 	{
 		input: 'src/Potree.js',
@@ -7,7 +8,12 @@ export default [
 			format: 'umd',
 			name: 'Potree',
 			sourcemap: true,
-		}
+			 globals: {
+				'three-loader-3dtiles': 'threeLoader3dtiles'
+			}
+		},
+		plugins: [resolve()],
+  		external: []
 	},{
 		input: 'src/workers/BinaryDecoderWorker.js',
 		output: {
