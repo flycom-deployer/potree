@@ -331,11 +331,9 @@ export class Viewer extends EventDispatcher{
 	}
 
 	async load3dTiles(url, rotation, elevation, group = '3D tiles') {
-		if (!url || this.tilesRuntime) {
-			return;
+		if (!url) {
+			return null;
 		}
-
-		this.clock = new THREE.Clock();
 
         const result = await Loader3DTiles.load({
 			url,
@@ -349,9 +347,6 @@ export class Viewer extends EventDispatcher{
         });
 
         const { model, runtime } = result;
-
-  		this.tilesRuntime = runtime;
-
 		const {x: rotX = 0, y: rotY = 0} = rotation || {};
 
 		model.rotation.x = rotX;
@@ -363,24 +358,12 @@ export class Viewer extends EventDispatcher{
 
 		model.position.set(x, y, elevation);
 		model.userData.group = group;
+		model.userData.runtime = runtime;
+		model.userData.clock = new THREE.Clock();
 
 		this.scene.scene.add(model);
 
-		const camTarget = new THREE.Vector3(
-			parseInt(x, 10),
-			parseInt(y, 10),
-			parseInt(elevation, 10)
-		);
-
-		if (!isFinite(camTarget.x) || !isFinite(camTarget.y) || !isFinite(camTarget.z)) {
-			console.error('Invalid target coordinates');
-			return;
-		}
-
-		const camPos = new THREE.Vector3().copy(camTarget).add(new THREE.Vector3(0, 0, 1000));
-
-		this.scene.view.position.copy(camPos);
-		this.scene.view.lookAt(camTarget);
+		return model;
     }
 
 	onCrash(error){
@@ -2166,10 +2149,12 @@ export class Viewer extends EventDispatcher{
 
 		pRenderer.clear();
 
-		if (this.clock && this.tilesRuntime) {
-			const dt = this.clock.getDelta();
-    		this.tilesRuntime.update(dt, this.renderer, this.scene.getActiveCamera())
-  		}
+		(this.scene.meshes || [])
+			.filter(({ userData = {} }) => userData.group === '3D tiles' && userData.clock && userData.runtime)
+			.forEach(({ userData }) => {
+				const dt = userData.clock.getDelta();
+				userData.runtime.update(dt, this.renderer, this.scene.getActiveCamera())
+			});
 
 		pRenderer.render(this.renderer);
 		this.renderer.render(this.overlay, this.overlayCamera);
