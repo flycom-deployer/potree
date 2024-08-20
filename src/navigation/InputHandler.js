@@ -35,6 +35,7 @@ export class InputHandler extends EventDispatcher {
 		this.wheelDelta = 0;
 
 		this.speed = 1;
+		this.canDoubleClick = true;
 
 		this.logMessages = false;
 
@@ -46,15 +47,15 @@ export class InputHandler extends EventDispatcher {
 		this.domElement.addEventListener('click', this.onMouseClick.bind(this), false);
 		this.domElement.addEventListener('mousedown', this.onMouseDown.bind(this), false);
 		this.domElement.addEventListener('mouseup', this.onMouseUp.bind(this), false);
-		this.domElement.addEventListener('mousemove', this.onMouseMove.bind(this), false);
-		this.domElement.addEventListener('mousewheel', this.onMouseWheel.bind(this), false);
-		this.domElement.addEventListener('DOMMouseScroll', this.onMouseWheel.bind(this), false); // Firefox
+		this.domElement.addEventListener('mousemove', this.throttle(this.onMouseMove.bind(this), 20), false);
+		this.domElement.addEventListener('mousewheel', this.throttle(this.onMouseWheel.bind(this), 20), false);
+		this.domElement.addEventListener('DOMMouseScroll', this.throttle(this.onMouseWheel.bind(this), 20), false); // Firefox
 		this.domElement.addEventListener('dblclick', this.onDoubleClick.bind(this));
 		this.domElement.addEventListener('keydown', this.onKeyDown.bind(this));
 		this.domElement.addEventListener('keyup', this.onKeyUp.bind(this));
 		this.domElement.addEventListener('touchstart', this.onTouchStart.bind(this));
 		this.domElement.addEventListener('touchend', this.onTouchEnd.bind(this));
-		this.domElement.addEventListener('touchmove', this.onTouchMove.bind(this));
+		this.domElement.addEventListener('touchmove', this.throttle(this.onTouchMove.bind(this), 20));
 	}
 
 	addInputListener (listener) {
@@ -74,25 +75,92 @@ export class InputHandler extends EventDispatcher {
 		});
 	}
 
+	normalizeTouchCoordinates(touches) {
+		let rect = this.domElement.getBoundingClientRect();
+
+		const normalized_touches = Array.from(touches).map(touch => {
+			const copyTouch = {};
+			for (let prop in touch) {
+			  if (Object.prototype.hasOwnProperty.call(touch, prop)) {
+				copyTouch[prop] = touch[prop];
+			  }
+			}
+
+			copyTouch.pageX = touch.pageX - rect.left;
+			copyTouch.pageY = touch.pageY - rect.top;
+			return copyTouch;
+		  });
+
+		return normalized_touches;
+	}
+
 	onTouchStart (e) {
-		if (this.logMessages) console.log(this.constructor.name + ': onTouchStart');
-
 		e.preventDefault();
+		const DOUBLE_CLICK_TRESHHOLD = 30;
 
-		if (e.touches.length === 1) {
-			let rect = this.domElement.getBoundingClientRect();
-			let x = e.touches[0].pageX - rect.left;
-			let y = e.touches[0].pageY - rect.top;
+		const e_touches = this.normalizeTouchCoordinates(e.touches);
+
+		if (e_touches.length === 1) {
+			let x = e_touches[0].pageX;
+			let y = e_touches[0].pageY;
 			this.mouse.set(x, y);
 
 			this.startDragging(null);
-		}
 
+			this.touchedHoveredElements = this.getHoveredElements();
+			if (this.previousDblClickTouch && this.previousDblClickTouch.touches.length === 1) {
+				if (this.dblClickTimeout) {
+					clearTimeout(this.dblClickTimeout);
+				}
+
+				const dx = Math.abs(e.touches[0].pageX - this.previousDblClickTouch.touches[0].pageX);
+				const dy = Math.abs(e.touches[0].pageY - this.previousDblClickTouch.touches[0].pageY);
+
+				if (dx < DOUBLE_CLICK_TRESHHOLD && dy < DOUBLE_CLICK_TRESHHOLD) {
+					let consumed = false;
+					for (let hovered of this.touchedHoveredElements) {
+						if (hovered.object._listeners && hovered.object._listeners['dblclick']) {
+							hovered.object.dispatchEvent({
+								type: 'dblclick',
+								mouse: this.mouse,
+								object: hovered.object
+							});
+							consumed = true;
+							break;
+						}
+					}
+
+					if (!consumed) {
+						for (let inputListener of this.getSortedListeners()) {
+							inputListener.dispatchEvent({
+								type: 'dblclick',
+								mouse: this.mouse,
+								object: null
+							});
+						}
+					}
+
+					this.previousDblClickTouch = null;
+					return;
+				}
+			}
+
+			if (!this.dblClickTimeout) {
+				this.dblClickTimeout = setTimeout(() => {
+					this.previousDblClickTouch = null;
+					this.dblClickTimeout = null;
+				}, 300);
+			}
+
+			if (this.canDoubleClick) {
+				this.previousDblClickTouch = e;
+			}
+		}
 
 		for (let inputListener of this.getSortedListeners()) {
 			inputListener.dispatchEvent({
 				type: e.type,
-				touches: e.touches,
+				touches: e_touches,
 				changedTouches: e.changedTouches
 			});
 		}
@@ -102,6 +170,8 @@ export class InputHandler extends EventDispatcher {
 		if (this.logMessages) console.log(this.constructor.name + ': onTouchEnd');
 
 		e.preventDefault();
+
+		const e_touches = this.normalizeTouchCoordinates(e.touches);
 
 		for (let inputListener of this.getSortedListeners()) {
 			inputListener.dispatchEvent({
@@ -116,10 +186,12 @@ export class InputHandler extends EventDispatcher {
 		for (let inputListener of this.getSortedListeners()) {
 			inputListener.dispatchEvent({
 				type: e.type,
-				touches: e.touches,
+				touches: e_touches,
 				changedTouches: e.changedTouches
 			});
 		}
+
+		this.touchedHoveredElements = null;
 	}
 
 	onTouchMove (e) {
@@ -127,10 +199,12 @@ export class InputHandler extends EventDispatcher {
 
 		e.preventDefault();
 
-		if (e.touches.length === 1) {
+		const e_touches = this.normalizeTouchCoordinates(e.touches);
+
+		if (e_touches.length === 1) {
 			let rect = this.domElement.getBoundingClientRect();
-			let x = e.touches[0].pageX - rect.left;
-			let y = e.touches[0].pageY - rect.top;
+			let x = e_touches[0].pageX;
+			let y = e_touches[0].pageY;
 			this.mouse.set(x, y);
 
 			if (this.drag) {
@@ -141,27 +215,55 @@ export class InputHandler extends EventDispatcher {
 
 				this.drag.end.set(x, y);
 
-				if (this.logMessages) console.log(this.constructor.name + ': drag: ');
+				let consumed = false;
+				for (let hovered of (this.touchedHoveredElements || [])) {
+					if (hovered.object._listeners && hovered.object._listeners['drag']) {
+						this.drag.object = hovered.object;
+
+						hovered.object.dispatchEvent({
+							type: 'drag',
+							drag: this.drag,
+							viewer: this.viewer
+						});
+						consumed = true;
+						break;
+					}
+				}
+
+				if (!consumed) {
+					if (this.logMessages) console.log(this.constructor.name + ': drag: ');
+					for (let inputListener of this.getSortedListeners()) {
+						inputListener.dispatchEvent({
+							type: 'drag',
+							drag: this.drag,
+							viewer: this.viewer
+						});
+					}
+				}
+			} else {
 				for (let inputListener of this.getSortedListeners()) {
 					inputListener.dispatchEvent({
-						type: 'drag',
-						drag: this.drag,
-						viewer: this.viewer
+						type: e.type,
+						touches: e_touches,
+						changedTouches: e.changedTouches
 					});
 				}
+
+			}
+
+		} else {
+			for (let inputListener of this.getSortedListeners()) {
+				inputListener.dispatchEvent({
+					type: e.type,
+					touches: e_touches,
+					changedTouches: e.changedTouches
+				});
 			}
 		}
 
-		for (let inputListener of this.getSortedListeners()) {
-			inputListener.dispatchEvent({
-				type: e.type,
-				touches: e.touches,
-				changedTouches: e.changedTouches
-			});
-		}
 
 		// DEBUG CODE
-		// let debugTouches = [...e.touches, {
+		// let debugTouches = [...e_touches, {
 		//	pageX: this.domElement.clientWidth / 2,
 		//	pageY: this.domElement.clientHeight / 2}];
 		// for(let inputListener of this.getSortedListeners()){
@@ -215,6 +317,10 @@ export class InputHandler extends EventDispatcher {
 
 	onDoubleClick (e) {
 		if (this.logMessages) console.log(this.constructor.name + ': onDoubleClick');
+
+		if (!this.canDoubleClick) {
+			return;
+		}
 
 		let consumed = false;
 		for (let hovered of this.hoveredElements) {
@@ -717,4 +823,19 @@ export class InputHandler extends EventDispatcher {
 
 		return lastDrag;
 	}
+
+	throttle(func, limit) {
+    	let inThrottle;
+
+		return function() {
+      		const args = arguments;
+      		const context = this;
+
+      		if (!inThrottle) {
+        		func.apply(context, args);
+        		inThrottle = true;
+        		setTimeout(() => inThrottle = false, limit);
+      		}
+    	}
+  	}
 }

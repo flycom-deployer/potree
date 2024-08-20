@@ -205,37 +205,197 @@ export class MeasuringTool extends EventDispatcher{
 			callback: null
 		};
 
-		let insertionCallback = (e) => {
-			if (e.button === THREE.MOUSE.LEFT) {
-				measure.addMarker(measure.points[measure.points.length - 1].position.clone());
+		let normalizeTouchCoordinates = touches => {
+			let rect = domElement.getBoundingClientRect();
 
-				if (measure.points.length >= measure.maxMarkers) {
-					cancel.callback();
+			const normalized_touches = Array.from(touches).map(touch => {
+				const copyTouch = {};
+				for (let prop in touch) {
+				  if (Object.prototype.hasOwnProperty.call(touch, prop)) {
+					copyTouch[prop] = touch[prop];
+				  }
+				}
+				// Update pageX and pageY in the copy
+				copyTouch.pageX = touch.pageX - rect.left;
+				copyTouch.pageY = touch.pageY - rect.top;
+				return copyTouch;
+			  });
+
+			return normalized_touches;
+		};
+
+		let isTouchSupported = () => {
+			return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+		};
+
+		let touchStart;
+		let touchMove;
+		let previousDblClickTouch = null;
+		let dblClickTimeout;
+		const DOUBLE_CLICK_TRESHHOLD = 30;
+		const DOUBLE_CLICK_TIMEOUT = 300;
+
+		let insertionCallback = (e) => {
+			if (e.type === 'touchstart') {
+				touchStart = undefined;
+				touchMove = undefined;
+
+				if (e.touches.length === 1) {
+					touchStart = e;
+					touchStart.e_touches = normalizeTouchCoordinates(e.touches);
+				}
+			} else if (e.type === 'touchmove') {
+				if (e.touches.length === 1) {
+					touchMove = e;
+				}
+			} else if (e.type === 'touchend') {
+				if (touchMove) {
+					const dx = Math.abs(touchStart.touches[0].pageX - touchMove.touches[0].pageX);
+					const dy = Math.abs(touchStart.touches[0].pageY - touchMove.touches[0].pageY);
+
+					if (dx > DOUBLE_CLICK_TRESHHOLD || dy > DOUBLE_CLICK_TRESHHOLD) {
+						return;
+					}
 				}
 
-				this.viewer.inputHandler.startDragging(
-					measure.spheres[measure.spheres.length - 1]);
-			} else if (e.button === THREE.MOUSE.RIGHT) {
-				cancel.callback();
+				let isDblClick = false;
+
+				if (touchStart.touches.length === 1)  {
+					if (previousDblClickTouch && previousDblClickTouch.touches.length === 1) {
+						if (dblClickTimeout) {
+							clearTimeout(dblClickTimeout);
+						}
+
+						const dx = Math.abs(touchStart.touches[0].pageX - previousDblClickTouch.touches[0].pageX);
+						const dy = Math.abs(touchStart.touches[0].pageY - previousDblClickTouch.touches[0].pageY);
+
+						if (dx < DOUBLE_CLICK_TRESHHOLD && dy < DOUBLE_CLICK_TRESHHOLD) {
+							isDblClick = true;
+							previousDblClickTouch = null;
+						} else {
+							previousDblClickTouch = touchStart;
+						}
+					} else {
+						previousDblClickTouch = touchStart;
+					}
+
+					if (!dblClickTimeout) {
+						dblClickTimeout = setTimeout(() => {
+							previousDblClickTouch = null;
+							dblClickTimeout = null;
+						}, 300);
+					}
+
+					let I = Utils.getMouseIntersection(
+						{
+							x: touchStart.e_touches[0].pageX,
+							y: touchStart.e_touches[0].pageY,
+						},
+						this.viewer.scene.getActiveCamera(),
+						this.viewer,
+						this.viewer.scene.pointclouds,
+						{ pickClipped: false }
+					);
+
+					if (I && !isDblClick) {
+						const {x, y, z} = measure.points.length === 1 ? measure.points[measure.points.length - 1].position : {};
+						if (x === 0 && y === 0 && z === 0) {
+							measure.setMarker(0, {position: I.location});
+						} else {
+							measure.addMarker(I.location);
+						}
+					}
+
+
+					if (isDblClick || measure.points.length >= measure.maxMarkers) {
+						if (measure.showArea && measure.closed && measure.points.length < 3) {
+							let appendCount = 3 - measure.points.length;
+							appendCount = appendCount > 0 ? appendCount : 0;
+							for (let i = 0; i < appendCount; i++) {
+								measure.addMarker(measure.points[measure.points.length - 1].position.clone());
+							}
+						}
+
+						cancel.callback();
+					}
+				}
+				touchStart = undefined;
+			} else {
+				if (e.button === THREE.MOUSE.LEFT) {
+					let isDblClick = false;
+
+					if (previousDblClickTouch) {
+						if (dblClickTimeout) {
+							clearTimeout(dblClickTimeout);
+						}
+						const dx = Math.abs(e.pageX - previousDblClickTouch.pageX);
+						const dy = Math.abs(e.pageY - previousDblClickTouch.pageY);
+
+						if (dx < DOUBLE_CLICK_TRESHHOLD && dy < DOUBLE_CLICK_TRESHHOLD) {
+							isDblClick = true;
+							previousDblClickTouch = null;
+						} else {
+							previousDblClickTouch = e;
+						}
+					}
+
+					if (!dblClickTimeout) {
+						dblClickTimeout = setTimeout(() => {
+							previousDblClickTouch = null;
+							dblClickTimeout = null;
+						}, 300);
+					}
+
+					if (isDblClick) {
+						cancel.callback();
+						return;
+					}
+					measure.addMarker(measure.points[measure.points.length - 1].position.clone());
+
+					if (measure.points.length >= measure.maxMarkers) {
+						cancel.callback();
+					}
+
+					this.viewer.inputHandler.startDragging(measure.spheres[measure.spheres.length - 1]);
+					previousDblClickTouch = e;
+				} else if (e.button === THREE.MOUSE.RIGHT) {
+					cancel.callback();
+				}
 			}
 		};
 
 		cancel.callback = e => {
-			if (cancel.removeLastMarker) {
+			if (cancel.removeLastMarker && !isTouchSupported()) {
 				measure.removeMarker(measure.points.length - 1);
 			}
 			domElement.removeEventListener('mouseup', insertionCallback, false);
+			domElement.removeEventListener('touchstart', insertionCallback, false);
+			domElement.removeEventListener('touchmove', insertionCallback, false);
+			domElement.removeEventListener('touchend', insertionCallback, false);
 			this.viewer.removeEventListener('cancel_insertions', cancel.callback);
+
+			// leave double click some time
+			setTimeout(() => {
+				this.viewer.inputHandler.canDoubleClick = true;
+			}, isTouchSupported() ? 0 : DOUBLE_CLICK_TIMEOUT);
 		};
 
-		if (measure.maxMarkers > 1) {
-			this.viewer.addEventListener('cancel_insertions', cancel.callback);
+		if (measure.maxMarkers > 1 || isTouchSupported()) {
 			domElement.addEventListener('mouseup', insertionCallback, false);
+			domElement.addEventListener('touchstart', insertionCallback, false);
+			domElement.addEventListener('touchend', insertionCallback, false);
+			domElement.addEventListener('touchmove', this.throttle(insertionCallback, 20), false);
+			this.viewer.addEventListener('cancel_insertions', cancel.callback);
 		}
 
 		measure.addMarker(new THREE.Vector3(0, 0, 0));
-		this.viewer.inputHandler.startDragging(
-			measure.spheres[measure.spheres.length - 1]);
+
+		this.viewer.inputHandler.canDoubleClick = false;
+
+		if (!isTouchSupported()) {
+			this.viewer.inputHandler.startDragging(
+				measure.spheres[measure.spheres.length - 1]);
+		}
 
 		this.viewer.scene.addMeasurement(measure);
 
@@ -417,4 +577,19 @@ export class MeasuringTool extends EventDispatcher{
 	render(){
 		this.viewer.renderer.render(this.scene, this.viewer.scene.getActiveCamera());
 	}
+
+	throttle(func, limit) {
+    	let inThrottle;
+
+		return function() {
+      		const args = arguments;
+      		const context = this;
+
+      		if (!inThrottle) {
+        		func.apply(context, args);
+        		inThrottle = true;
+        		setTimeout(() => inThrottle = false, limit);
+      		}
+    	}
+  	}
 };

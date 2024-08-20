@@ -26,6 +26,7 @@ import {Compass} from "../utils/Compass.js";
 import {OrbitControls} from "../navigation/OrbitControls.js";
 import {FirstPersonControls} from "../navigation/FirstPersonControls.js";
 import {EarthControls} from "../navigation/EarthControls.js";
+import {EarthOrbitControls} from "../navigation/EarthOrbitControls.js";
 import {DeviceOrientationControls} from "../navigation/DeviceOrientationControls.js";
 import {VRControls} from "../navigation/VRControls.js";
 import { EventDispatcher } from "../EventDispatcher.js";
@@ -196,12 +197,10 @@ export class Viewer extends EventDispatcher{
 		{
 			let canvas = this.renderer.domElement;
 			canvas.addEventListener("webglcontextlost", (e) => {
-				console.log(e);
 				this.postMessage("WebGL context lost. \u2639");
 
 				let gl = this.renderer.getContext();
 				let error = gl.getError();
-				console.log(error);
 			}, false);
 		}
 
@@ -1167,6 +1166,14 @@ export class Viewer extends EventDispatcher{
 			this.orbitControls.enabled = false;
 			this.orbitControls.addEventListener('start', this.disableAnnotations.bind(this));
 			this.orbitControls.addEventListener('end', this.enableAnnotations.bind(this));
+		}
+
+		{ // create EARTH ORBIT CONTROLS
+			// this.earthControls = new EarthControls(this);
+			this.earthOrbitControls = new EarthOrbitControls(this);
+			this.earthOrbitControls.enabled = false;
+			this.earthOrbitControls.addEventListener('start', this.disableAnnotations.bind(this));
+			this.earthOrbitControls.addEventListener('end', this.enableAnnotations.bind(this));
 		}
 
 		{ // create EARTH CONTROLS

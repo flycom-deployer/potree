@@ -300,6 +300,7 @@ export class Measure extends THREE.Object3D {
 		this.maxMarkers = Number.MAX_SAFE_INTEGER;
 
 		this.sphereGeometry = new THREE.SphereGeometry(0.4, 10, 10);
+		this.touchSphereGeometry = new THREE.SphereGeometry(1, 10, 10);
 		this.color = new THREE.Color(0xff0000);
 
 		this.spheres = [];
@@ -351,7 +352,24 @@ export class Measure extends THREE.Object3D {
 		this.points.push(point);
 
 		// sphere
+/*
 		let sphere = new THREE.Mesh(this.sphereGeometry, this.createSphereMaterial());
+
+		this.add(sphere);
+		this.spheres.push(sphere);
+*/
+
+		let markerSphere = new THREE.Mesh(this.sphereGeometry, this.createSphereMaterial());
+
+		const touchSphereGeometry = this.touchSphereGeometry;
+		const touchSphereMaterial = new THREE.MeshBasicMaterial({
+		  color: 0xffff00,
+		  transparent: true,
+		  opacity: 0.0 // Completely transparent
+		});
+		let sphere = new THREE.Mesh(touchSphereGeometry, touchSphereMaterial);
+
+		sphere.add(markerSphere);
 
 		this.add(sphere);
 		this.spheres.push(sphere);
@@ -458,8 +476,8 @@ export class Measure extends THREE.Object3D {
 				}
 			};
 
-			let mouseover = (e) => e.object.material.emissive.setHex(0x888888);
-			let mouseleave = (e) => e.object.material.emissive.setHex(0x000000);
+			let mouseover = (e) => e.object.children[0].material.emissive.setHex(0x888888);
+			let mouseleave = (e) => e.object.children[0].material.emissive.setHex(0x000000);
 
 			sphere.addEventListener('drag', drag);
 			sphere.addEventListener('drop', drop);
