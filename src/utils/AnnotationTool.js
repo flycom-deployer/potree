@@ -56,7 +56,7 @@ export class AnnotationTool extends EventDispatcher{
 		domElement.addEventListener('mouseup', insertionCallback, false);
 
 		let drag = (e) => {
-			let I = Utils.getMousePointCloudIntersection(
+			let I = Utils.getMouseIntersection(
 				e.drag.end,
 				e.viewer.scene.getActiveCamera(),
 				e.viewer,

@@ -5,6 +5,7 @@ import {Utils} from "../utils.js";
 import {Line2} from "../../libs/three.js/lines/Line2.js";
 import {LineGeometry} from "../../libs/three.js/lines/LineGeometry.js";
 import {LineMaterial} from "../../libs/three.js/lines/LineMaterial.js";
+import calculatePolygonSurfaceArea, {getPolygonTriangulation} from './PolygonAreaPoly2Tri';
 
 function createHeightLine(){
 	let lineGeometry = new LineGeometry();
@@ -280,6 +281,18 @@ function createAzimuth(){
 	return azimuth;
 }
 
+function createMultiMaterialObject( geometry, materials ) {
+	const group = new THREE.Group();
+
+	for ( let i = 0, l = materials.length; i < l; i ++ ) {
+		group.add( new THREE.Mesh( geometry, materials[ i ] ) );
+	}
+
+	return group;
+}
+
+let triangulationMesh = undefined;
+
 export class Measure extends THREE.Object3D {
 	constructor () {
 		super();
@@ -330,6 +343,46 @@ export class Measure extends THREE.Object3D {
 
 		this.add(this.azimuth.node);
 
+		this.adding = false;
+		this.updating = false;
+		this.canUpdate = false;
+	}
+
+	drawTriangles(triangles) {
+		if (triangulationMesh) {
+			this.remove(triangulationMesh);
+		}
+
+		const vertices = [];
+
+		triangles.forEach(triangle => {
+			triangle.forEach(vertex => {
+				vertices.push(vertex[0], vertex[1], vertex[2]); // x, y, z
+			});
+		});
+
+		const geometry = new THREE.BufferGeometry();
+		const verticesArray = new Float32Array(vertices);
+
+		geometry.setAttribute('position', new THREE.BufferAttribute(verticesArray, 3));
+
+		const meshMaterial = new THREE.MeshBasicMaterial({
+			color: 0xffff00,
+			side: THREE.DoubleSide,
+			wireframe: false,
+			transparent: true,
+			opacity: 0.25,
+		});
+
+		const wireFrameMaterial = new THREE.MeshBasicMaterial({
+			color: 0xff0000,
+			side: THREE.DoubleSide,
+			wireframe: true,
+		});
+
+		triangulationMesh = createMultiMaterialObject(geometry, [meshMaterial, wireFrameMaterial]);
+
+		this.add(triangulationMesh);
 	}
 
 	createSphereMaterial () {
@@ -370,6 +423,7 @@ export class Measure extends THREE.Object3D {
 		let sphere = new THREE.Mesh(touchSphereGeometry, touchSphereMaterial);
 
 		sphere.add(markerSphere);
+		this.dragObject = sphere;
 
 		this.add(sphere);
 		this.spheres.push(sphere);
@@ -440,6 +494,12 @@ export class Measure extends THREE.Object3D {
 					e.viewer.scene.pointclouds,
 					{pickClipped: true});
 
+				if (!this.adding) {
+					this.updating = true;
+				}
+
+				this.dragObject = e.drag.object;
+
 				if (I) {
 					let i = this.spheres.indexOf(e.drag.object);
 					if (i !== -1) {
@@ -466,14 +526,24 @@ export class Measure extends THREE.Object3D {
 			};
 
 			let drop = e => {
-				let i = this.spheres.indexOf(e.drag.object);
+				let i = this.spheres.indexOf(this.dragObject ?? e.drag?.object);
+
+				this.dragObject = undefined;
+
 				if (i !== -1) {
 					this.dispatchEvent({
 						'type': 'marker_dropped',
 						'measurement': this,
 						'index': i
 					});
+
 				}
+
+				if (!this.adding) {
+					this.updating = false;
+				}
+
+				this.triangulate();
 			};
 
 			let mouseover = (e) => e.object.children[0].material.emissive.setHex(0x888888);
@@ -481,6 +551,10 @@ export class Measure extends THREE.Object3D {
 
 			sphere.addEventListener('drag', drag);
 			sphere.addEventListener('drop', drop);
+
+			let domElement = viewer.renderer.domElement;
+			domElement.addEventListener('touchend', drop);
+
 			sphere.addEventListener('mouseover', mouseover);
 			sphere.addEventListener('mouseleave', mouseleave);
 		}
@@ -494,6 +568,45 @@ export class Measure extends THREE.Object3D {
 
 		this.setMarker(this.points.length - 1, point);
 	};
+
+	triangulate() {
+		if (this.showArea && this.points.length >= 3) {
+			const _vertices = this.points.map(point => [
+				point.position.x,
+				point.position.y,
+				point.position.z
+			]);
+
+			const vertices = [];
+
+			// remove duplicates
+			_vertices.forEach(vertex => {
+				if (!vertices.some(v => v[0] === vertex[0] && v[1] === vertex[1] && v[2] === vertex[2])) {
+					vertices.push(vertex);
+				}
+			});
+
+			const triangles = getPolygonTriangulation(vertices);
+
+			if (triangles) {
+				this.drawTriangles(triangles);
+			}
+		}
+	}
+
+	getArea3D() {
+		if (!(this.showArea && this.points.length >= 3)) {
+			return 0;
+		}
+
+		const vertices = this.points.map(point => [
+			point.position.x,
+			point.position.y,
+			point.position.z
+		]);
+
+		return calculatePolygonSurfaceArea(vertices);
+	}
 
 	removeMarker (index) {
 		this.points.splice(index, 1);
@@ -626,6 +739,12 @@ export class Measure extends THREE.Object3D {
 	// }
 
 	update () {
+		 if (!this.adding && !this.updating && !this.canUpdate) {
+			return;
+		} else {
+			this.canUpdate = true;
+		}
+
 		if (this.points.length === 0) {
 			return;
 		} else if (this.points.length === 1) {
@@ -847,6 +966,7 @@ export class Measure extends THREE.Object3D {
 			this.areaLabel.position.copy(centroid);
 			this.areaLabel.visible = this.showArea && this.points.length >= 3;
 			let area = this.getArea();
+			let area3D = this.getArea3D();
 
 			let suffix = "";
 			if(this.lengthUnit != null && this.lengthUnitDisplay != null){
@@ -855,8 +975,14 @@ export class Measure extends THREE.Object3D {
 			}
 
 			let txtArea = Utils.addCommas(area.toFixed(1));
-			let msg =  `${txtArea} ${suffix}\u00B2`;
+			let txtArea3D = Utils.addCommas(area3D.toFixed(1));
+			let msg =  `${txtArea}/${txtArea3D} ${suffix}\u00B2`;
 			this.areaLabel.setText(msg);
+		}
+
+		if (!this.adding && !this.updating) {
+			this.canUpdate = false;
+			this.triangulate();
 		}
 
 		// this.updateAzimuth();

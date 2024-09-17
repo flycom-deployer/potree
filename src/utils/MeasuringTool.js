@@ -134,6 +134,8 @@ export class MeasuringTool extends EventDispatcher{
 		});
 
 		this.showLabels = true;
+		this.lastShowLabels = true;
+
 		this.scene = new THREE.Scene();
 		this.scene.name = 'scene_measurement';
 		this.light = new THREE.PointLight(0xffffff, 1.0);
@@ -365,7 +367,9 @@ export class MeasuringTool extends EventDispatcher{
 		};
 
 		cancel.callback = e => {
-			if (cancel.removeLastMarker && !isTouchSupported()) {
+			measure.adding = false;
+
+ 			if (cancel.removeLastMarker && !isTouchSupported()) {
 				measure.removeMarker(measure.points.length - 1);
 			}
 			domElement.removeEventListener('mouseup', insertionCallback, false);
@@ -389,6 +393,7 @@ export class MeasuringTool extends EventDispatcher{
 		}
 
 		measure.addMarker(new THREE.Vector3(0, 0, 0));
+		measure.adding = true;
 
 		this.viewer.inputHandler.canDoubleClick = false;
 
@@ -556,7 +561,6 @@ export class MeasuringTool extends EventDispatcher{
 			}
 
 			if(!this.showLabels){
-
 				const labels = [
 					...measure.sphereLabels,
 					...measure.edgeLabels,
@@ -570,7 +574,11 @@ export class MeasuringTool extends EventDispatcher{
 				for(const label of labels){
 					label.visible = false;
 				}
+			} else if(!this.lastShowLabels) {
+				measure.canUpdate = true;
 			}
+
+			this.lastShowLabels = this.showLabels;
 		}
 	}
 

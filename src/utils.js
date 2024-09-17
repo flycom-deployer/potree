@@ -423,22 +423,20 @@ export class Utils {
 	static getMouseSceneIntersection(mouse, camera, viewer, pointclouds, params = {}) {
 	 	let renderer = viewer.renderer;
 		let raycaster = new THREE.Raycaster();
-		raycaster.params.Line.threshold = 0.2;
-
-		let interactables = [];
-
-		viewer.scene.scene.traverseVisible(node => {
-			if (node.userData.canMeasure && node.visible) {
-				interactables.push(node);
-			}
-		});
-
 		let ray = Utils.mouseToRay(mouse, camera, renderer.domElement.clientWidth, renderer.domElement.clientHeight);
 
 		raycaster.ray.set(ray.origin, ray.direction);
 
-		return raycaster.intersectObjects(interactables, false);
+		const objectId = viewer.gpuPicker.pick(mouse.x, mouse.y);
+		const object = viewer.scene.scene.getObjectById(objectId);
+
+		if (object){
+			return raycaster.intersectObjects([object], false);
+		}
+
+		return [];
 	}
+
 	static getMousePointCloudIntersection (mouse, camera, viewer, pointclouds, params = {}) {
 		let renderer = viewer.renderer;
 		let nmouse = {

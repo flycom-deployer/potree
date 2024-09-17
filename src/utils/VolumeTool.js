@@ -64,7 +64,7 @@ export class VolumeTool extends EventDispatcher{
 		}else{
 			volume = new BoxVolume();
 		}
-		
+
 		volume.clip = args.clip || false;
 		volume.name = args.name || 'Volume';
 
@@ -82,12 +82,12 @@ export class VolumeTool extends EventDispatcher{
 
 		let drag = e => {
 			let camera = this.viewer.scene.getActiveCamera();
-			
-			let I = Utils.getMousePointCloudIntersection(
-				e.drag.end, 
-				this.viewer.scene.getActiveCamera(), 
-				this.viewer, 
-				this.viewer.scene.pointclouds, 
+
+			let I = Utils.getMouseIntersection(
+				e.drag.end,
+				this.viewer.scene.getActiveCamera(),
+				this.viewer,
+				this.viewer.scene.pointclouds,
 				{pickClipped: false});
 
 			if (I) {
@@ -126,7 +126,7 @@ export class VolumeTool extends EventDispatcher{
 		if (!this.viewer.scene) {
 			return;
 		}
-		
+
 		let camera = this.viewer.scene.getActiveCamera();
 		let renderAreaSize = this.viewer.renderer.getSize(new THREE.Vector2());
 		let clientWidth = renderAreaSize.width;
@@ -135,7 +135,7 @@ export class VolumeTool extends EventDispatcher{
 		let volumes = this.viewer.scene.volumes;
 		for (let volume of volumes) {
 			let label = volume.label;
-			
+
 			{
 
 				let distance = label.position.distanceTo(camera.position);
@@ -156,7 +156,7 @@ export class VolumeTool extends EventDispatcher{
 		const renderer = this.viewer.renderer;
 
 		const oldTarget = renderer.getRenderTarget();
-		
+
 		if(params.renderTarget){
 			renderer.setRenderTarget(params.renderTarget);
 		}

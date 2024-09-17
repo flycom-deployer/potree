@@ -34,12 +34,22 @@ import { ClassificationScheme } from "../materials/ClassificationScheme.js";
 import { VRButton } from '../../libs/three.js/extra/VRButton.js';
 
 import JSON5 from "../../libs/json5-2.1.3/json5.mjs";
-import { Loader3DTiles } from 'three-loader-3dtiles';
+
+import { sRGBEncoding } from 'three';
+// import {GeoTransform, Loader3DTiles} from 'three-loader-3dtiles';
+import {Loader3DTiles, PointCloudColoring} from 'three-loader-3dtiles';
+import {GPUPicker} from "../utils/GPUPicker";
+
+// import { TileLoader, OGC3DTile } from '@jdultra/threedtiles';
+// import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+// import { KTX2Loader } from "three/addons/loaders/KTX2Loader.js";
 
 export class Viewer extends EventDispatcher{
 
 	constructor(domElement, args = {}){
 		super();
+
+    	window.addEventListener('resize', this.onWindowResize.bind(this))
 
 		this.renderArea = domElement;
 		this.guiLoaded = false;
@@ -324,12 +334,81 @@ export class Viewer extends EventDispatcher{
 		this.profileTool = new ProfileTool(this);
 		this.volumeTool = new VolumeTool(this);
 
+		this.gpuPicker = new GPUPicker(this.renderer, this.scene.scene, this.scene.getActiveCamera());
+
 		}catch(e){
 			this.onCrash(e);
 		}
 	}
 
-	async load3dTiles(url, rotation, elevation, group = '3D tiles') {
+	getViewport() {
+		return {
+			width: window.innerWidth,
+			height: window.innerHeight,
+			devicePixelRatio: window.devicePixelRatio
+		};
+	}
+
+	onWindowResize() {
+		(this.scene.meshes || [])
+			.filter(({ userData = {} }) => userData.group === '3D tiles' && userData.clock && userData.runtime)
+			.forEach(({ userData }) => {
+		      	userData.runtime?.setViewport(this.getViewport());
+			});
+    }
+
+	async load3dTilesGoogle({
+		url = 'https://tile.googleapis.com/v1/3dtiles/root.json',
+		googleApiKey = 'AIzaSyDdE4qNaAPvweUBMMhCtn9KxkZek78ACV8',
+		wireframe = false,
+		name = '',
+		latitude = 46.048783,
+		longitude = 14.508536,
+		height = 0
+	} = {}) {
+		const EPSGWGS84 = '+proj=longlat +datum=WGS84 +no_defs';
+  		const EPSG3794 = '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs';
+		const cartesian = window.proj4(EPSGWGS84, EPSG3794, [longitude, latitude]);
+        const result = await Loader3DTiles.load({
+          	url,
+			viewport: this.getViewport(),
+          	options: {
+            	googleApiKey,
+            	dracoDecoderPath: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco',
+            	basisTranscoderPath: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/basis',
+            	pointCloudColoring: PointCloudColoring.RGB,
+            	maximumScreenSpaceError: 48,
+				wireframe,
+        	}
+        });
+
+        const { model, runtime } = result;
+
+		const parentObject = new THREE.Group();
+		parentObject.add(model);
+
+		parentObject.rotation.x = -Math.PI / 2; // 90 degrees in radians
+		parentObject.rotation.y = Math.PI/2; // 90 degrees in radians
+		parentObject.rotation.z = Math.PI; // 90 degrees in radians
+		parentObject.position.set(cartesian[0], cartesian[1], -45);	// diff between geoid and elipsoid height
+
+		parentObject.userData.group = '3D tiles';
+		parentObject.userData.runtime = runtime;
+		parentObject.userData.clock = new THREE.Clock();
+        parentObject.name = name || `Mesh ${Date.now()}`;
+
+		this.addMesh(parentObject);
+
+		runtime.orientToGeocoord({
+        	lat: Number(latitude),
+        	long: Number(longitude),
+        	height: Number(height)
+      	});
+
+		return parentObject;
+    }
+
+	async load3dTiles(url, properties = {}, group = '3D tiles') {
 		if (!url) {
 			return null;
 		}
@@ -337,33 +416,95 @@ export class Viewer extends EventDispatcher{
         const result = await Loader3DTiles.load({
 			url,
             renderer: this.renderer,
+			viewport: this.getViewport(),
             options: {
-                dracoDecoderPath: 'https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/libs/draco',
-                basisTranscoderPath: 'https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/libs/basis',
+                dracoDecoderPath: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/libs/draco',
+                basisTranscoderPath: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/libs/basis',
+				resetTransform: true,
 				debug: false, // uncomment for debuging tiles boxes
-				geoTransform: 2, // web mercator
+				updateInterval: 0.5,	// 0.1
+				maximumScreenSpaceError: 32, // 16
+				maxConcurrency: 2, // 1
+				wireframe: properties?.wireframe ?? false,
             },
         });
 
         const { model, runtime } = result;
-		const {x: rotX = 0, y: rotY = 0} = rotation || {};
 
-		model.rotation.x = rotX;
-		model.rotation.y = rotY;
-
+		const {cartographicCenter} = runtime.getTileset();
+		const EPSGWGS84 = '+proj=longlat +datum=WGS84 +no_defs';
   		const EPSG3794 = '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs';
-  		const EPSG3857 = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs';
-		let [x,y] = window.proj4(EPSG3857, EPSG3794, [model.position.x, -model.position.z]);
+		let cartesian = window.proj4(EPSGWGS84, EPSG3794, cartographicCenter);
 
-		model.position.set(x, y, elevation);
+		model.position.set(...cartesian);
 		model.userData.group = group;
 		model.userData.runtime = runtime;
 		model.userData.clock = new THREE.Clock();
+        model.name = properties?.name ?? `Mesh ${Date.now()}`;
 
-		this.scene.scene.add(model);
+		this.addMesh(model, properties?.name);
 
 		return model;
     }
+
+	addMesh(mesh) {
+        if (!this.scene.meshes) {
+            this.scene.meshes = [];
+        }
+
+        if (!this.scene.meshes.length) {
+            this.renderer.oldEncoding = this.renderer.outputEncoding;
+            this.renderer.outputEncoding = sRGBEncoding;
+
+			this.ambientLight = new THREE.AmbientLight( 0x555555 ); // soft white light
+        	this.scene.scene.add(this.ambientLight);
+        }
+
+        this.scene.meshes.push(mesh);
+		this.scene.scene.add(mesh);
+
+        this.scene.dispatchEvent({
+            type: 'mesh_added',
+            scene: this.scene,
+            mesh,
+        });
+    }
+
+	removeMesh(mesh) {
+        if (!this.scene.meshes) {
+            this.scene.meshes = [];
+        }
+
+		const index = this.scene.meshes.indexOf(mesh);
+
+		if (index < 0) {
+			return;
+		}
+
+		this.scene.meshes.splice(index, 1);
+
+		this.scene.dispatchEvent({
+			type: 'mesh_removed',
+			scene: this.scene,
+			mesh,
+		});
+
+		if (mesh.userData.group === '3D tiles') {
+			mesh.userData.clock = undefined;
+			mesh.userData.runtime = undefined;
+		}
+
+		this.scene.scene.remove(mesh);
+
+		if (!this.scene.meshes.length && this.renderer.oldEncoding) {
+			this.renderer.outputEncoding = this.renderer.oldEncoding;
+			this.renderer.oldEncoding = undefined;
+
+			if (!this.ambientLight) {
+				this.scene.scene.remove(this.ambientLight);
+			}
+		}
+	}
 
 	onCrash(error){
 
@@ -1655,6 +1796,16 @@ export class Viewer extends EventDispatcher{
 
 	}
 
+	getCameraFar(camera, defaultFarPlaneValue = 1000000) {
+		const globeRadius = 6378137; // Earth's radius in meters
+		const distanceFromOrigin = camera.position.length();
+		const farPlaneTreshhold = globeRadius / 10;
+
+		return distanceFromOrigin > farPlaneTreshhold
+			? distanceFromOrigin + globeRadius * 2
+			: defaultFarPlaneValue;
+	}
+
 	update(delta, timestamp){
 
 		if(Potree.measureTimings) performance.mark("update-start");
@@ -1807,11 +1958,12 @@ export class Viewer extends EventDispatcher{
 					near = 0.01
 				}
 
-				camera.near = near;
-				camera.far = far;
+				camera.near = 0.01;
 			}else{
-				// don't change near and far in this case
+				camera.near = 0.01;
 			}
+
+			camera.far = this.getCameraFar(camera);
 
 			if(this.scene.cameraMode == CameraMode.ORTHOGRAPHIC) {
 				camera.near = -camera.far;
@@ -2157,10 +2309,11 @@ export class Viewer extends EventDispatcher{
 		pRenderer.clear();
 
 		(this.scene.meshes || [])
+			.filter(({ visible = {} }) => visible)
 			.filter(({ userData = {} }) => userData.group === '3D tiles' && userData.clock && userData.runtime)
 			.forEach(({ userData }) => {
 				const dt = userData.clock.getDelta();
-				userData.runtime.update(dt, this.renderer, this.scene.getActiveCamera())
+				userData.runtime.update(dt, this.scene.getActiveCamera());
 			});
 
 		pRenderer.render(this.renderer);

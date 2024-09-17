@@ -97,6 +97,7 @@ export class EarthOrbitControls extends EventDispatcher {
 	};
 
 	onMouseUp = e => {
+		this.I = undefined;
 		this.controlerType = UNDEFINED_CONTROLLER;
 		this.camStart = null;
 		this.pivot = null;
@@ -138,14 +139,23 @@ export class EarthOrbitControls extends EventDispatcher {
 	};
 
 	onScroll = (e) => {
-		let I = Utils.getMouseIntersection(
-			this.viewer.inputHandler.mouse,
-			this.scene.getActiveCamera(),
-			this.viewer,
-			this.scene.pointclouds,
-			{pickClipped: false});
+		if (!this.lastMouse) {
+			this.lastMouse = new THREE.Vector2(0,0);
+		}
 
-		if (I) {
+		const distance = this.lastMouse ? this.lastMouse.distanceTo(this.viewer.inputHandler.mouse) : 0;
+		this.lastMouse = this.viewer.inputHandler.mouse.clone();
+
+		if (!this.I || distance > 10) {
+			this.I = Utils.getMouseIntersection(
+				this.viewer.inputHandler.mouse,
+				this.scene.getActiveCamera(),
+				this.viewer,
+				this.scene.pointclouds,
+				{pickClipped: false});
+		}
+
+		if (this.I) {
 			this.controlerType = EARTH_CONTROLLER;
 			this.earthScroll(e);
 		} else {
@@ -384,8 +394,8 @@ export class EarthOrbitControls extends EventDispatcher {
 
 		// compute zoom
 		if (this.wheelDelta !== 0) {
-			let I = this.pivot
-				? {location: this.pivot}
+			let I = (this.pivot || this.I)
+				? {location: this.pivot  || this.I.location}
 				: Utils.getMouseIntersection(
 				// TODO ??
 				this.viewer.inputHandler.mouse,
