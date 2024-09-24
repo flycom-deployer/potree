@@ -239218,7 +239218,7 @@ Char: ${this.c}`;
 	            	dracoDecoderPath: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco',
 	            	basisTranscoderPath: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/basis',
 	            	pointCloudColoring: Nc.RGB,
-	            	maximumScreenSpaceError: 48,
+	            	maximumScreenSpaceError: 48,	// lower quality than default
 					wireframe,
 	        	}
 	        });
@@ -239262,10 +239262,9 @@ Char: ${this.c}`;
 	                dracoDecoderPath: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/libs/draco',
 	                basisTranscoderPath: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/libs/basis',
 					resetTransform: true,
-					debug: false, // uncomment for debuging tiles boxes
-					updateInterval: 0.5,	// 0.1
-					maximumScreenSpaceError: 32, // 16
-					maxConcurrency: 2, // 1
+					updateInterval: 0.5,
+					maximumScreenSpaceError: 16,
+					maxConcurrency: 2,
 					wireframe: properties?.wireframe ?? false,
 	            },
 	        });
@@ -239277,15 +239276,23 @@ Char: ${this.c}`;
 	  		const EPSG3794 = '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs';
 			let cartesian = window.proj4(EPSGWGS84, EPSG3794, cartographicCenter);
 
-			model.position.set(...cartesian);
-			model.userData.group = group;
-			model.userData.runtime = runtime;
-			model.userData.clock = new Clock$1();
-	        model.name = properties?.name ?? `Mesh ${Date.now()}`;
+			const parentObject = new Group$1();
+			parentObject.add(model);
 
-			this.addMesh(model, properties?.name);
+			parentObject.rotation.x = parseFloat(properties.rotationX ?? 0) || 0;
+			parentObject.rotation.y = parseFloat(properties.rotationY ?? 0) || 0;
+			let [x, y, z] = cartesian;
+			z = parseFloat(properties.elevation ?? 0) || z || 0;
+			parentObject.position.set(x, y, z);
 
-			return model;
+			parentObject.userData.group = group;
+			parentObject.userData.runtime = runtime;
+			parentObject.userData.clock = new Clock$1();
+	        parentObject.name = properties?.name || `Mesh ${Date.now()}`;
+
+			this.addMesh(parentObject);
+
+			return parentObject;
 	    }
 
 		addMesh(mesh) {
