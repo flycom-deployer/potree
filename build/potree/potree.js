@@ -129434,7 +129434,7 @@
 						this.updating = false;
 					}
 
-					this.triangulate();
+					// this.triangulate();
 				};
 
 				let mouseover = (e) => e.object.children[0].material.emissive.setHex(0x888888);
@@ -129873,7 +129873,7 @@
 
 			if (!this.adding && !this.updating) {
 				this.canUpdate = false;
-				this.triangulate();
+				// this.triangulate();
 			}
 
 			// this.updateAzimuth();
