@@ -543,7 +543,7 @@ export class Measure extends THREE.Object3D {
 					this.updating = false;
 				}
 
-				this.triangulate();
+				// this.triangulate();
 			};
 
 			let mouseover = (e) => e.object.children[0].material.emissive.setHex(0x888888);
@@ -982,7 +982,7 @@ export class Measure extends THREE.Object3D {
 
 		if (!this.adding && !this.updating) {
 			this.canUpdate = false;
-			this.triangulate();
+			// this.triangulate();
 		}
 
 		// this.updateAzimuth();
