@@ -153448,9 +153448,11 @@ ENDSEC
 		}
 
 		async focus(image360){
-			if (!image360) {
+			if (!image360 || this.loading) {
 				return false;
 			}
+
+			this.loading = true;
 
 			this.isNavigation = image360.style === 'navigation';
 
@@ -153590,10 +153592,17 @@ ENDSEC
 					scene: viewer.scene,
 					image: this.focusedImage,
 				});
-			});
+			})
+				.finally(() => {
+					this.loading = false;
+				});
 		}
 
 		unfocus(){
+			if (!this.oldFov || this.loading) {
+				return;
+			}
+
 			this.removeEventListener('mousewheel', this.zoomOn);
 			document.removeEventListener("keydown", this.keyDown);
 
@@ -153660,8 +153669,6 @@ ENDSEC
 				return;
 			}
 
-			this.loading = true;
-
 			const nearestImage = this.getNearestImage(forward);
 
 			if (nearestImage) {
@@ -153669,8 +153676,6 @@ ENDSEC
 					await this.focus(nearestImage);
 	            } catch (e) {}
 			}
-
-			this.loading = false;
 		}
 
 		distance(point1, point2) {
