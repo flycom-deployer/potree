@@ -171,7 +171,18 @@ export class MeasuringTool extends EventDispatcher{
 	startInsertion (args = {}) {
 		let domElement = this.viewer.renderer.domElement;
 
-		let measure = new Measure();
+		let measure = new Measure(this.viewer);
+
+		if(this.viewer.isMeasuring) {
+			this.viewer.scene.removeMeasurement(this.viewer.isMeasuring);
+		}
+
+		if (this.viewer.selectedUuid !== measure.uuid) {
+            this.viewer.selectedUuid = measure.uuid;
+            this.viewer.scene.measurements.forEach(measurement => { measurement.canUpdate = true;	});
+        }
+
+		this.viewer.isMeasuring = measure;
 
 		this.dispatchEvent({
 			type: 'start_inserting_measurement',
@@ -186,8 +197,9 @@ export class MeasuringTool extends EventDispatcher{
 			}
 		};
 
+		// measure.selector = pick(args.selector, false);
+		measure.selector = pick(args.selector, false);
 		measure.showDistances = (args.showDistances === null) ? true : args.showDistances;
-
 		measure.showArea = pick(args.showArea, false);
 		measure.showAngles = pick(args.showAngles, false);
 		measure.showCoordinates = pick(args.showCoordinates, false);
@@ -319,6 +331,7 @@ export class MeasuringTool extends EventDispatcher{
 						}
 
 						cancel.callback();
+						measure.finish();
 					}
 				}
 				touchStart = undefined;
@@ -350,6 +363,8 @@ export class MeasuringTool extends EventDispatcher{
 
 					if (isDblClick) {
 						cancel.callback();
+						measure.finish();
+
 						return;
 					}
 					measure.addMarker(measure.points[measure.points.length - 1].position.clone());
@@ -362,13 +377,12 @@ export class MeasuringTool extends EventDispatcher{
 					previousDblClickTouch = e;
 				} else if (e.button === THREE.MOUSE.RIGHT) {
 					cancel.callback();
+					measure.finish();
 				}
 			}
 		};
 
 		cancel.callback = e => {
-			measure.adding = false;
-
  			if (cancel.removeLastMarker && !isTouchSupported()) {
 				measure.removeMarker(measure.points.length - 1);
 			}
@@ -377,11 +391,6 @@ export class MeasuringTool extends EventDispatcher{
 			domElement.removeEventListener('touchmove', insertionCallback, false);
 			domElement.removeEventListener('touchend', insertionCallback, false);
 			this.viewer.removeEventListener('cancel_insertions', cancel.callback);
-
-			// leave double click some time
-			setTimeout(() => {
-				this.viewer.inputHandler.canDoubleClick = true;
-			}, isTouchSupported() ? 0 : DOUBLE_CLICK_TIMEOUT);
 		};
 
 		if (measure.maxMarkers > 1 || isTouchSupported()) {

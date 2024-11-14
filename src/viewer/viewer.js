@@ -1070,7 +1070,9 @@ export class Viewer extends EventDispatcher{
 	}
 
 	fitToScreen (factor = 1, animationDuration = 0) {
-		let box = this.getBoundingBox(this.scene.pointclouds);
+		const visiblePointClouds = this.scene.pointclouds.filter(pc => pc.visible)
+
+		let box = this.getBoundingBox(visiblePointClouds);
 
 		let node = new THREE.Object3D();
 		node.boundingBox = box;
@@ -1847,7 +1849,8 @@ export class Viewer extends EventDispatcher{
 			material.uniforms.uFilterGPSTimeClipRange.value = this.filterGPSTimeRange;
 			material.uniforms.uFilterPointSourceIDClipRange.value = this.filterPointSourceIDRange;
 
-			material.classification = this.classifications;
+			const classifications = pointcloud.name && this.classificationsList?.[pointcloud.name] ? this.classificationsList[pointcloud.name] : this.classifications;
+			material.classification = classifications;
 			material.recomputeClassification();
 
 			this.updateMaterialDefaults(pointcloud);

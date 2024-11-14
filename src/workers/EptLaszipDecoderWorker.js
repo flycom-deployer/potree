@@ -75,10 +75,10 @@ async function readUsingDataView(event) {
 	}
 
 	const ranges = [
-		'x', 
-		'y', 
-		'z', 
-		'intensity', 
+		'x',
+		'y',
+		'z',
+		'intensity',
 		'classification',
 		'returnNumber',
 		'numberOfReturns',
@@ -159,7 +159,8 @@ async function readUsingDataView(event) {
 		views.color8[4 * i + 0] = normalizeColor(views.color16[3 * i + 0]);
 		views.color8[4 * i + 1] = normalizeColor(views.color16[3 * i + 1]);
 		views.color8[4 * i + 2] = normalizeColor(views.color16[3 * i + 2]);
-		views.gpsTime32[i] = views.gpsTime64[i] - ranges.gpsTime[0]
+		// views.gpsTime32[i] = views.gpsTime64[i] - ranges.gpsTime[0]
+		views.gpsTime32[i] = views.gpsTime64[i]
 	}
 
 	performance.mark("laslaz-end");
@@ -181,11 +182,11 @@ async function readUsingDataView(event) {
 			min: [ranges.x[0], ranges.y[0], ranges.z[0]],
 			max: [ranges.x[1], ranges.y[1], ranges.z[1]],
 		},
-		gpsMeta: { 
-			offset: ranges.gpsTime[0], 
+		gpsMeta: {
+			offset: ranges.gpsTime[0],
 			range: ranges.gpsTime[1] - ranges.gpsTime[0]
 		},
-		ranges: { 
+		ranges: {
 			intensity: ranges.intensity,
 			classification: ranges.classification,
 			'return number': ranges.returnNumber,

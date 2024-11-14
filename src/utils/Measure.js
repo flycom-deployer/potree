@@ -311,10 +311,12 @@ export class Measure extends THREE.Object3D {
 		this._showEdges = true;
 		this._showAzimuth = false;
 		this.maxMarkers = Number.MAX_SAFE_INTEGER;
+		this.selector = false;
 
 		this.sphereGeometry = new THREE.SphereGeometry(0.4, 10, 10);
 		this.touchSphereGeometry = new THREE.SphereGeometry(1, 10, 10);
 		this.color = new THREE.Color(0xff0000);
+		this.selectedColor = new THREE.Color(0xff7800);
 
 		this.spheres = [];
 		this.edges = [];
@@ -395,6 +397,29 @@ export class Measure extends THREE.Object3D {
 
 		return sphereMaterial;
 	};
+
+	finish() {
+		let name = this.name;
+
+		if (this.selector) {
+			name = 'Selector';
+		} else if (this.updating ) {
+			name = 'Select';
+		}
+
+		this.adding = false;
+
+		setTimeout(() => {
+			viewer.isMeasuring = false;
+
+			viewer.dispatchEvent({
+				type: 'measurement_finished',
+				name,
+			});
+
+			viewer.inputHandler.canDoubleClick = true;
+		}, 0);
+	}
 
 	addMarker (point) {
 		if (point.x != null) {
@@ -501,6 +526,11 @@ export class Measure extends THREE.Object3D {
 				this.dragObject = e.drag.object;
 
 				if (I) {
+					if (viewer.selectedUuid !== this.uuid) {
+            			viewer.selectedUuid = this.uuid;
+            			viewer.scene.measurements.forEach(measurement => { measurement.canUpdate = true;	});
+        			}
+
 					let i = this.spheres.indexOf(e.drag.object);
 					if (i !== -1) {
 						let point = this.points[i];
@@ -526,9 +556,17 @@ export class Measure extends THREE.Object3D {
 			};
 
 			let drop = e => {
+				if (!this.adding && !this.updating) {
+					this.updating = true;
+				}
+
 				let i = this.spheres.indexOf(this.dragObject ?? e.drag?.object);
 
 				this.dragObject = undefined;
+
+				if (this.points.length >= this.maxMarkers) {
+					this.finish();
+				}
 
 				if (i !== -1) {
 					this.dispatchEvent({
@@ -752,6 +790,12 @@ export class Measure extends THREE.Object3D {
 			let position = point.position;
 			this.spheres[0].position.copy(position);
 
+			const childSphere = this.spheres?.[0]?.children?.[0];
+
+			if (childSphere) {
+				childSphere.material.color = viewer?.selectedUuid === this?.uuid ? this.selectedColor : this.color;
+			}
+
 			{ // coordinate labels
 				let coordinateLabel = this.coordinateLabels[0];
 
@@ -793,11 +837,16 @@ export class Measure extends THREE.Object3D {
 			// spheres
 			sphere.position.copy(point.position);
 			sphere.material.color = this.color;
+			const childSphere = sphere.children?.[0];
+
+			if (childSphere) {
+				childSphere.material.color = viewer?.selectedUuid === this?.uuid ? this.selectedColor : this.color;
+			}
 
 			{ // edges
 				let edge = this.edges[index];
 
-				edge.material.color = this.color;
+				edge.material.color = viewer?.selectedUuid === this?.uuid ? this.selectedColor : this.color;
 
 				edge.position.copy(point.position);
 

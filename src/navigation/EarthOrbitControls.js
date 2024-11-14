@@ -19,7 +19,6 @@ export class EarthOrbitControls extends EventDispatcher {
 
 		this.rotationSpeed = 20;
 		this.fadeFactor = 20;
-		this.doubleClockZoomEnabled = true;
 		this.startHandled = undefined;
 
 		this.tweens = [];
@@ -190,10 +189,6 @@ export class EarthOrbitControls extends EventDispatcher {
 	};
 
 	onTouchMove = e => {
-		if(!this.doubleClockZoomEnabled){
-			return;
-		}
-
 		if (e.touches.length === 2 && this.previousTouch.touches.length === 2){
 			let prev = this.previousTouch;
 			let curr = e;
@@ -644,10 +639,6 @@ export class EarthOrbitControls extends EventDispatcher {
 	}
 
 	orbitScroll(e) {
-		if(!this.doubleClockZoomEnabled){
-			return;
-		}
-
 		let resolvedRadius = this.scene.view.radius + this.radiusDelta;
 
 		this.radiusDelta += -e.delta * resolvedRadius * 0.05;

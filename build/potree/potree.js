@@ -129202,10 +129202,12 @@
 			this._showEdges = true;
 			this._showAzimuth = false;
 			this.maxMarkers = Number.MAX_SAFE_INTEGER;
+			this.selector = false;
 
 			this.sphereGeometry = new SphereGeometry$1(0.4, 10, 10);
 			this.touchSphereGeometry = new SphereGeometry$1(1, 10, 10);
 			this.color = new Color$1(0xff0000);
+			this.selectedColor = new Color$1(0xff7800);
 
 			this.spheres = [];
 			this.edges = [];
@@ -129286,6 +129288,29 @@
 
 			return sphereMaterial;
 		};
+
+		finish() {
+			let name = this.name;
+
+			if (this.selector) {
+				name = 'Selector';
+			} else if (this.updating ) {
+				name = 'Select';
+			}
+
+			this.adding = false;
+
+			setTimeout(() => {
+				viewer.isMeasuring = false;
+
+				viewer.dispatchEvent({
+					type: 'measurement_finished',
+					name,
+				});
+
+				viewer.inputHandler.canDoubleClick = true;
+			}, 0);
+		}
 
 		addMarker (point) {
 			if (point.x != null) {
@@ -129392,6 +129417,11 @@
 					this.dragObject = e.drag.object;
 
 					if (I) {
+						if (viewer.selectedUuid !== this.uuid) {
+	            			viewer.selectedUuid = this.uuid;
+	            			viewer.scene.measurements.forEach(measurement => { measurement.canUpdate = true;	});
+	        			}
+
 						let i = this.spheres.indexOf(e.drag.object);
 						if (i !== -1) {
 							let point = this.points[i];
@@ -129417,9 +129447,17 @@
 				};
 
 				let drop = e => {
+					if (!this.adding && !this.updating) {
+						this.updating = true;
+					}
+
 					let i = this.spheres.indexOf(this.dragObject ?? e.drag?.object);
 
 					this.dragObject = undefined;
+
+					if (this.points.length >= this.maxMarkers) {
+						this.finish();
+					}
 
 					if (i !== -1) {
 						this.dispatchEvent({
@@ -129643,6 +129681,12 @@
 				let position = point.position;
 				this.spheres[0].position.copy(position);
 
+				const childSphere = this.spheres?.[0]?.children?.[0];
+
+				if (childSphere) {
+					childSphere.material.color = viewer?.selectedUuid === this?.uuid ? this.selectedColor : this.color;
+				}
+
 				{ // coordinate labels
 					let coordinateLabel = this.coordinateLabels[0];
 
@@ -129684,11 +129728,16 @@
 				// spheres
 				sphere.position.copy(point.position);
 				sphere.material.color = this.color;
+				const childSphere = sphere.children?.[0];
+
+				if (childSphere) {
+					childSphere.material.color = viewer?.selectedUuid === this?.uuid ? this.selectedColor : this.color;
+				}
 
 				{ // edges
 					let edge = this.edges[index];
 
-					edge.material.color = this.color;
+					edge.material.color = viewer?.selectedUuid === this?.uuid ? this.selectedColor : this.color;
 
 					edge.position.copy(point.position);
 
@@ -143974,7 +144023,18 @@ void main() {
 		startInsertion (args = {}) {
 			let domElement = this.viewer.renderer.domElement;
 
-			let measure = new Measure();
+			let measure = new Measure(this.viewer);
+
+			if(this.viewer.isMeasuring) {
+				this.viewer.scene.removeMeasurement(this.viewer.isMeasuring);
+			}
+
+			if (this.viewer.selectedUuid !== measure.uuid) {
+	            this.viewer.selectedUuid = measure.uuid;
+	            this.viewer.scene.measurements.forEach(measurement => { measurement.canUpdate = true;	});
+	        }
+
+			this.viewer.isMeasuring = measure;
 
 			this.dispatchEvent({
 				type: 'start_inserting_measurement',
@@ -143989,8 +144049,9 @@ void main() {
 				}
 			};
 
+			// measure.selector = pick(args.selector, false);
+			measure.selector = pick(args.selector, false);
 			measure.showDistances = (args.showDistances === null) ? true : args.showDistances;
-
 			measure.showArea = pick(args.showArea, false);
 			measure.showAngles = pick(args.showAngles, false);
 			measure.showCoordinates = pick(args.showCoordinates, false);
@@ -144122,6 +144183,7 @@ void main() {
 							}
 
 							cancel.callback();
+							measure.finish();
 						}
 					}
 					touchStart = undefined;
@@ -144153,6 +144215,8 @@ void main() {
 
 						if (isDblClick) {
 							cancel.callback();
+							measure.finish();
+
 							return;
 						}
 						measure.addMarker(measure.points[measure.points.length - 1].position.clone());
@@ -144165,13 +144229,12 @@ void main() {
 						previousDblClickTouch = e;
 					} else if (e.button === MOUSE$2.RIGHT) {
 						cancel.callback();
+						measure.finish();
 					}
 				}
 			};
 
 			cancel.callback = e => {
-				measure.adding = false;
-
 	 			if (cancel.removeLastMarker && !isTouchSupported()) {
 					measure.removeMarker(measure.points.length - 1);
 				}
@@ -144180,11 +144243,6 @@ void main() {
 				domElement.removeEventListener('touchmove', insertionCallback, false);
 				domElement.removeEventListener('touchend', insertionCallback, false);
 				this.viewer.removeEventListener('cancel_insertions', cancel.callback);
-
-				// leave double click some time
-				setTimeout(() => {
-					this.viewer.inputHandler.canDoubleClick = true;
-				}, isTouchSupported() ? 0 : DOUBLE_CLICK_TIMEOUT);
 			};
 
 			if (measure.maxMarkers > 1 || isTouchSupported()) {
@@ -158809,7 +158867,6 @@ ENDSEC
 
 			this.rotationSpeed = 20;
 			this.fadeFactor = 20;
-			this.doubleClockZoomEnabled = true;
 			this.startHandled = undefined;
 
 			this.tweens = [];
@@ -158980,10 +159037,6 @@ ENDSEC
 		};
 
 		onTouchMove = e => {
-			if(!this.doubleClockZoomEnabled){
-				return;
-			}
-
 			if (e.touches.length === 2 && this.previousTouch.touches.length === 2){
 				let prev = this.previousTouch;
 				let curr = e;
@@ -159434,10 +159487,6 @@ ENDSEC
 		}
 
 		orbitScroll(e) {
-			if(!this.doubleClockZoomEnabled){
-				return;
-			}
-
 			let resolvedRadius = this.scene.view.radius + this.radiusDelta;
 
 			this.radiusDelta += -e.delta * resolvedRadius * 0.05;
@@ -239916,7 +239965,9 @@ Char: ${this.c}`;
 		}
 
 		fitToScreen (factor = 1, animationDuration = 0) {
-			let box = this.getBoundingBox(this.scene.pointclouds);
+			const visiblePointClouds = this.scene.pointclouds.filter(pc => pc.visible);
+
+			let box = this.getBoundingBox(visiblePointClouds);
 
 			let node = new Object3D$1();
 			node.boundingBox = box;
@@ -240693,7 +240744,8 @@ Char: ${this.c}`;
 				material.uniforms.uFilterGPSTimeClipRange.value = this.filterGPSTimeRange;
 				material.uniforms.uFilterPointSourceIDClipRange.value = this.filterPointSourceIDRange;
 
-				material.classification = this.classifications;
+				const classifications = pointcloud.name && this.classificationsList?.[pointcloud.name] ? this.classificationsList[pointcloud.name] : this.classifications;
+				material.classification = classifications;
 				material.recomputeClassification();
 
 				this.updateMaterialDefaults(pointcloud);
