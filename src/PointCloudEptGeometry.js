@@ -40,15 +40,15 @@ class U {
 	}
 
 	static maybeSrs(srs) {
-		try { 
-			proj4(srs) 
+		try {
+			proj4(srs)
 			return srs
 		} catch (e) {}
 	}
 };
 
 class BaseGeometry {
-	constructor({ 
+	constructor({
 		cube,
 		boundsConforming,
 		spacing,
@@ -153,7 +153,13 @@ export class PointCloudEptGeometry extends BaseGeometry {
 	async loadHierarchyPage(key) {
 		const { Ept, Key } = window.Copc
 
-		const filename = `${this.base}/ept-hierarchy/${Key.toString(key)}.json`
+		let selectedKey = Key.toString(key);
+		if (this.ept?.useFolder) {
+			selectedKey = selectedKey.split('-').join('/');
+		}
+
+		const filename = `${this.base}/ept-hierarchy/${selectedKey}.json`
+
 		const response = await fetch(filename);
 		const json = await response.json();
 		return Ept.Hierarchy.parse(json)
@@ -198,8 +204,8 @@ export class PointCloudCopcGeometryNode extends PointCloudTreeNode {
 	isLoaded() { return this.loaded; }
 	getBoundingSphere() { return this.boundingSphere; }
 	getBoundingBox() { return this.boundingBox; }
-	getNumPoints() { 
-		return this.nodeinfo ? this.nodeinfo.pointCount : -1; 
+	getNumPoints() {
+		return this.nodeinfo ? this.nodeinfo.pointCount : -1;
 	}
 
 	getChildren() {
@@ -244,7 +250,7 @@ export class PointCloudCopcGeometryNode extends PointCloudTreeNode {
 
 		const { nodes, pages } = await this.owner.loadHierarchyPage(this.key)
 
-		// Since we want to traverse top-down, and 10 comes lexicographically 
+		// Since we want to traverse top-down, and 10 comes lexicographically
 		// before 9 (for example), do a deep sort.
 		const keys = Object.keys({ ...nodes, ...pages })
 			.map(Key.create)
@@ -268,7 +274,7 @@ export class PointCloudCopcGeometryNode extends PointCloudTreeNode {
 			const bounds = Bounds.step(parentNode.bounds, step)
 			const node = new Potree.PointCloudCopcGeometryNode(
 				this.owner,
-				key, 
+				key,
 				bounds);
 			parentNode.addChild(node);
 			nodemap[keyname] = node;
@@ -277,9 +283,9 @@ export class PointCloudCopcGeometryNode extends PointCloudTreeNode {
 			const nodeinfo = nodes[keyname]
 			if (nodeinfo) node.nodeinfo = nodeinfo
 
-			// And for leaf nodes whose data is in a different hierarchy page, 
+			// And for leaf nodes whose data is in a different hierarchy page,
 			// store the info for the hierarchy page in our page map.  This is
-			// only applicable for COPC data since we need hierarchy page 
+			// only applicable for COPC data since we need hierarchy page
 			// ranges to fetch them - EPT data on the other hand we just need
 			// the node key to fetch the file.
 			const pageinfo = pages[keyname]

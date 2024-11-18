@@ -132402,15 +132402,15 @@
 		}
 
 		static maybeSrs(srs) {
-			try { 
-				proj4(srs); 
+			try {
+				proj4(srs);
 				return srs
 			} catch (e) {}
 		}
 	};
 
 	class BaseGeometry {
-		constructor({ 
+		constructor({
 			cube,
 			boundsConforming,
 			spacing,
@@ -132515,7 +132515,13 @@
 		async loadHierarchyPage(key) {
 			const { Ept, Key } = window.Copc;
 
-			const filename = `${this.base}/ept-hierarchy/${Key.toString(key)}.json`;
+			let selectedKey = Key.toString(key);
+			if (this.ept?.useFolder) {
+				selectedKey = selectedKey.split('-').join('/');
+			}
+
+			const filename = `${this.base}/ept-hierarchy/${selectedKey}.json`;
+
 			const response = await fetch(filename);
 			const json = await response.json();
 			return Ept.Hierarchy.parse(json)
@@ -132560,8 +132566,8 @@
 		isLoaded() { return this.loaded; }
 		getBoundingSphere() { return this.boundingSphere; }
 		getBoundingBox() { return this.boundingBox; }
-		getNumPoints() { 
-			return this.nodeinfo ? this.nodeinfo.pointCount : -1; 
+		getNumPoints() {
+			return this.nodeinfo ? this.nodeinfo.pointCount : -1;
 		}
 
 		getChildren() {
@@ -132606,7 +132612,7 @@
 
 			const { nodes, pages } = await this.owner.loadHierarchyPage(this.key);
 
-			// Since we want to traverse top-down, and 10 comes lexicographically 
+			// Since we want to traverse top-down, and 10 comes lexicographically
 			// before 9 (for example), do a deep sort.
 			const keys = Object.keys({ ...nodes, ...pages })
 				.map(Key.create)
@@ -132630,7 +132636,7 @@
 				const bounds = Bounds.step(parentNode.bounds, step);
 				const node = new Potree.PointCloudCopcGeometryNode(
 					this.owner,
-					key, 
+					key,
 					bounds);
 				parentNode.addChild(node);
 				nodemap[keyname] = node;
@@ -132639,9 +132645,9 @@
 				const nodeinfo = nodes[keyname];
 				if (nodeinfo) node.nodeinfo = nodeinfo;
 
-				// And for leaf nodes whose data is in a different hierarchy page, 
+				// And for leaf nodes whose data is in a different hierarchy page,
 				// store the info for the hierarchy page in our page map.  This is
-				// only applicable for COPC data since we need hierarchy page 
+				// only applicable for COPC data since we need hierarchy page
 				// ranges to fetch them - EPT data on the other hand we just need
 				// the node key to fetch the file.
 				const pageinfo = pages[keyname];
@@ -142507,7 +142513,13 @@ void main() {
 
 			const { Key } = window.Copc;
 
-			const url = `${node.owner.base}/ept-data/${Key.toString(node.key)}.laz`;
+			let selectedKey = Key.toString(node.key);
+			if (node.owner?.ept?.useFolder) {
+				selectedKey = selectedKey.split('-').join('/');
+			}
+
+			const url = `${node.owner.base}/ept-data/${selectedKey}.laz`;
+
 			const response = await fetch(url);
 			const buffer = await response.arrayBuffer();
 			this.parse(node, buffer);
@@ -142550,7 +142562,7 @@ void main() {
 			// however we must split things out a bit to accommodate the expensive
 			// calls to go in the worker.  So in this non-worker context, we just
 			// isolate the compressed data buffer, which is passed to the worker.
-			// The time-consuming decompression and extracting the data into 
+			// The time-consuming decompression and extracting the data into
 			// GPU-compatible buffers happens in the worker.
 			const { pointCount, pointDataOffset, pointDataLength } = node.nodeinfo;
 
@@ -142559,7 +142571,7 @@ void main() {
 			// don't try to fetch a slice of point data in this case.
 			if (!pointCount) return this.parse(node, new ArrayBuffer())
 			const compressed = await node.owner.getter(
-				pointDataOffset, 
+				pointDataOffset,
 				pointDataOffset + pointDataLength);
 			this.parse(node, compressed.buffer);
 		}
@@ -142598,7 +142610,7 @@ void main() {
 
 				let positions = new Float32Array(e.data.position);
 				let colors = new Uint8Array(e.data.color);
-				
+
 				let intensities = new Float32Array(e.data.intensity);
 				let classifications = new Uint8Array(e.data.classification);
 				let returnNumbers = new Uint8Array(e.data.returnNumber);

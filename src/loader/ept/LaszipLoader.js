@@ -6,7 +6,13 @@ export class EptLaszipLoader {
 
 		const { Key } = window.Copc
 
-		const url = `${node.owner.base}/ept-data/${Key.toString(node.key)}.laz`
+		let selectedKey = Key.toString(node.key);
+		if (node.owner?.ept?.useFolder) {
+			selectedKey = selectedKey.split('-').join('/');
+		}
+
+		const url = `${node.owner.base}/ept-data/${selectedKey}.laz`
+
 		const response = await fetch(url);
 		const buffer = await response.arrayBuffer();
 		this.parse(node, buffer);
@@ -49,7 +55,7 @@ export class CopcLaszipLoader {
 		// however we must split things out a bit to accommodate the expensive
 		// calls to go in the worker.  So in this non-worker context, we just
 		// isolate the compressed data buffer, which is passed to the worker.
-		// The time-consuming decompression and extracting the data into 
+		// The time-consuming decompression and extracting the data into
 		// GPU-compatible buffers happens in the worker.
 		const { pointCount, pointDataOffset, pointDataLength } = node.nodeinfo
 
@@ -58,7 +64,7 @@ export class CopcLaszipLoader {
 		// don't try to fetch a slice of point data in this case.
 		if (!pointCount) return this.parse(node, new ArrayBuffer())
 		const compressed = await node.owner.getter(
-			pointDataOffset, 
+			pointDataOffset,
 			pointDataOffset + pointDataLength)
 		this.parse(node, compressed.buffer);
 	}
@@ -97,7 +103,7 @@ export class EptLazBatcher {
 
 			let positions = new Float32Array(e.data.position);
 			let colors = new Uint8Array(e.data.color);
-			
+
 			let intensities = new Float32Array(e.data.intensity);
 			let classifications = new Uint8Array(e.data.classification);
 			let returnNumbers = new Uint8Array(e.data.returnNumber);
