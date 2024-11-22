@@ -157042,13 +157042,16 @@ ENDSEC
 				this.domElement.tabIndex = 2222;
 			}
 
+			// Bind the throttled function to awoid browser pinch zoom
+	        this.throttledOnMouseWheel = this.throttle(this.delayedOnMouseWheel.bind(this), 20);
+
 			this.domElement.addEventListener('contextmenu', (event) => { event.preventDefault(); }, false);
 			this.domElement.addEventListener('click', this.onMouseClick.bind(this), false);
 			this.domElement.addEventListener('mousedown', this.onMouseDown.bind(this), false);
 			this.domElement.addEventListener('mouseup', this.onMouseUp.bind(this), false);
 			this.domElement.addEventListener('mousemove', this.throttle(this.onMouseMove.bind(this), 20), false);
-			this.domElement.addEventListener('mousewheel', this.throttle(this.onMouseWheel.bind(this), 20), false);
-			this.domElement.addEventListener('DOMMouseScroll', this.throttle(this.onMouseWheel.bind(this), 20), false); // Firefox
+			this.domElement.addEventListener('mousewheel', this.onMouseWheel.bind(this), { passive: false });
+			this.domElement.addEventListener('DOMMouseScroll', this.onMouseWheel.bind(this), { passive: false }); // Firefox
 			this.domElement.addEventListener('dblclick', this.onDoubleClick.bind(this));
 			this.domElement.addEventListener('keydown', this.onKeyDown.bind(this));
 			this.domElement.addEventListener('keyup', this.onKeyUp.bind(this));
@@ -157593,7 +157596,12 @@ ENDSEC
 			this.hoveredElements = hoveredElements;
 		}
 
-		onMouseWheel(e){
+		onMouseWheel (e) {
+			e.preventDefault();
+			this.throttledOnMouseWheel(e);
+		}
+
+		delayedOnMouseWheel(e){
 			if(!this.enabled) return;
 
 			if(this.logMessages) console.log(this.constructor.name + ": onMouseWheel");
