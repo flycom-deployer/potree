@@ -1,8 +1,6 @@
 /**
  * Fast GPU picker that handles dynamic scenes and objects for Three.JS
- *
- * @author bzztbomb https://github.com/bzztbomb
- * @author jfaust https://github.com/jfaust
+ * based on: jfaust https://github.com/jfaust
  */
 import * as THREE from "../../libs/three.js/build/three.module.js";
 
@@ -52,37 +50,18 @@ var GPUPicker = function (renderer, scene, camera) {
     this.raycastPick = function (rayOrigin, rayDirection, viewer, shouldPickObject) {
         shouldPickObjectCB = shouldPickObject;
 
-        // Step 1: Create an offscreen camera that mimics the main camera
         var offscreenCamera = new THREE.PerspectiveCamera(camera.fov, camera.aspect, camera.near, camera.far);
-        offscreenCamera.position.copy(rayOrigin);  // Set the camera's position to the ray's origin
+        offscreenCamera.position.copy(rayOrigin);
+        var targetPoint = rayOrigin.clone().add(rayDirection);
+        offscreenCamera.lookAt(targetPoint);
 
-        // Step 2: Adjust the offscreen camera to point along the ray's direction
-        // Instead of using lookAt, calculate the correct direction vector
-        var targetPoint = rayOrigin.clone().add(rayDirection);  // Calculate the target point in the world
-        offscreenCamera.lookAt(targetPoint);  // Point the camera towards this direction
-
-        // Step 3: Set up the picking render target (1x1 pixel)
-        var pickingTarget = new THREE.WebGLRenderTarget(1, 1, {
-            minFilter: THREE.NearestFilter,
-            magFilter: THREE.NearestFilter,
-            format: THREE.RGBAFormat,
-            encoding: THREE.LinearEncoding
-        });
-
-        var pixelBuffer = new Uint8Array(4);  // Buffer to store the pixel data
-
-        // Step 4: Render the scene for picking with the offscreen camera
         renderer.setRenderTarget(pickingTarget);
         renderer.setClearColor(0xffffff);
         renderer.clear();
 
-        // Step 5: Traverse the scene and replace materials with picking materials
         scene.traverse(function (object) {
             if (object.isMesh) {
-                // Save the original material
                 object.userData.originalMaterial = object.material;
-
-                // Create a special picking material that encodes the object ID
                 object.material = new THREE.ShaderMaterial({
                     vertexShader: THREE.ShaderChunk.meshbasic_vert,
                     fragmentShader: `
@@ -92,33 +71,38 @@ var GPUPicker = function (renderer, scene, camera) {
                         }
                     `,
                     uniforms: {
-                        objectId: {
-                            value: [
-                                (object.id >> 24 & 255) / 255,
-                                (object.id >> 16 & 255) / 255,
-                                (object.id >> 8 & 255) / 255,
-                                (object.id & 255) / 255
-                            ]
-                        }
-                    }
+                        objectId: { value: [
+                            (object.id >> 24 & 255) / 255,
+                            (object.id >> 16 & 255) / 255,
+                            (object.id >> 8 & 255) / 255,
+                            (object.id & 255) / 255
+                        ] }
+                    },
+                    depthTest: true,
+                    depthWrite: false,
+                    transparent: false
                 });
             }
         });
 
-        renderer.render(scene, offscreenCamera);  // Render the scene with the offscreen camera
+        renderer.render(scene, offscreenCamera);
 
-        // Step 5: Read the pixel from the picking render target
+        var pixelBuffer = new Uint8Array(4);
         renderer.readRenderTargetPixels(pickingTarget, 0, 0, 1, 1, pixelBuffer);
-        renderer.setRenderTarget(null);  // Reset the render target
 
-        // Step 6: Convert pixelBuffer to object ID
+        scene.traverse(function (object) {
+            if (object.isMesh) {
+                object.material = object.userData.originalMaterial || object.material;
+                delete object.userData.originalMaterial;
+            }
+        });
+
+        renderer.setRenderTarget(null);
+        renderer.state.reset();
+
         var val = (pixelBuffer[0] << 24) | (pixelBuffer[1] << 16) | (pixelBuffer[2] << 8) | pixelBuffer[3];
-        if (val === 0xffffffff) {
-            return -1;  // No object was picked, return -1
-        }
-
-        return val;  // Return the object ID
-    };
+        return val === 0xffffffff ? -1 : val;
+    }
 
     function renderList() {
         // This is the magic, these render lists are still filled with valid data.  So we can

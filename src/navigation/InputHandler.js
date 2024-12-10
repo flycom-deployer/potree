@@ -504,6 +504,44 @@ export class InputHandler extends EventDispatcher {
 	}
 
 	onMouseMove (e) {
+		function updateHoverStates(currentHoveredElements = [], lastHoveredElements = []) {
+		  // Convert arrays to sets for O(1) membership tests
+		  const currentSet = new Set(currentHoveredElements);
+		  const lastSet = new Set(lastHoveredElements);
+
+		  const newlyHovered = [];
+		  const noLongerHovered = [];
+
+		  // Find newly hovered: in currentSet but not in lastSet
+		  for (const el of currentSet) {
+			if (!lastSet.has(el)) {
+			  newlyHovered.push(el);
+			}
+		  }
+
+		  // Find no longer hovered: in lastSet but not in currentSet
+		  for (const el of lastSet) {
+			if (!currentSet.has(el)) {
+			  noLongerHovered.push(el);
+			}
+		  }
+
+		  // Dispatch events
+		  for (let el of newlyHovered) {
+			el.dispatchEvent({
+			  type: 'mouseover',
+			  object: el,
+			});
+		  }
+
+		  for (let el of noLongerHovered) {
+			el.dispatchEvent({
+			  type: 'mouseleave',
+			  object: el,
+			});
+		  }
+		}
+
 		e.preventDefault();
 
 		let rect = this.domElement.getBoundingClientRect();
@@ -516,6 +554,12 @@ export class InputHandler extends EventDispatcher {
 			let names = hoveredElements.map(h => h.object.name).join(", ");
 			if (this.logMessages) console.log(`${this.constructor.name}: onMouseMove; hovered: '${names}'`);
 		}
+
+		// non-mesh types, sprites...
+		updateHoverStates(
+			hoveredElements.map(a => a.object).filter(a => !a.isMesh),
+			this.hoveredElements.map(a => a.object).filter(a => !a.isMesh)
+		)
 
 		if (this.drag) {
 			this.drag.mouse = e.buttons;
@@ -551,8 +595,8 @@ export class InputHandler extends EventDispatcher {
 				}
 			}
 		}else{
-			let curr = hoveredElements.map(a => a.object).find(a => true);
-			let prev = this.hoveredElements.map(a => a.object).find(a => true);
+			let curr = hoveredElements.map(a => a.object).find(a => a.isMesh);
+			let prev = this.hoveredElements.map(a => a.object).find(a => a.isMesh);
 
 			if(curr !== prev){
 				if(curr){
@@ -776,7 +820,6 @@ export class InputHandler extends EventDispatcher {
 					let hasInteractableListener = interactableListeners.filter((e) => {
 						return node._listeners[e] !== undefined;
 					}).length > 0;
-
 					if (hasInteractableListener) {
 						interactables.push(node);
 					}
@@ -790,6 +833,9 @@ export class InputHandler extends EventDispatcher {
 		let raycaster = new THREE.Raycaster();
 		raycaster.ray.set(ray.origin, ray.direction);
 		raycaster.params.Line.threshold = 0.2;
+
+		// TODO Set the camera on the raycaster so sprites can be intersected.
+    	raycaster.camera = camera;
 
 		let intersections = raycaster.intersectObjects(interactables.filter(o => o.visible), false);
 

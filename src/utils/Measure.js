@@ -7,6 +7,15 @@ import {LineGeometry} from "../../libs/three.js/lines/LineGeometry.js";
 import {LineMaterial} from "../../libs/three.js/lines/LineMaterial.js";
 import calculatePolygonSurfaceArea, {getPolygonTriangulation} from './PolygonAreaPoly2Tri';
 
+function setHoverEvents(object) {
+	object.addEventListener('mouseover', () => {
+		object.material.opacity = 0.0;
+	});
+	object.addEventListener('mouseleave',  () => {
+		object.material.opacity = 1.0;
+	});
+}
+
 function createHeightLine(){
 	let lineGeometry = new LineGeometry();
 
@@ -43,6 +52,8 @@ function createHeightLabel(){
 	heightLabel.material.opacity = 1;
 	heightLabel.visible = false;
 
+	setHoverEvents(heightLabel.sprite);
+
 	return heightLabel;
 }
 
@@ -57,6 +68,8 @@ function createAreaLabel(){
 	areaLabel.material.opacity = 1;
 	areaLabel.visible = false;
 
+	setHoverEvents(areaLabel.sprite);
+
 	return areaLabel;
 }
 
@@ -70,6 +83,8 @@ function createCircleRadiusLabel(){
 	circleRadiusLabel.material.depthTest = false;
 	circleRadiusLabel.material.opacity = 1;
 	circleRadiusLabel.visible = false;
+
+	setHoverEvents(circleRadiusLabel.sprite);
 
 	return circleRadiusLabel;
 }
@@ -252,6 +267,8 @@ function createAzimuth(){
 		label.fontsize = 16;
 		label.material.depthTest = false;
 		label.material.opacity = 1;
+
+		setHoverEvents(label.sprite);
 
 		azimuth.label = label;
 	}
@@ -484,6 +501,8 @@ export class Measure extends THREE.Object3D {
 			edgeLabel.fontsize = 16;
 			this.edgeLabels.push(edgeLabel);
 			this.add(edgeLabel);
+
+			setHoverEvents(edgeLabel.sprite);
 		}
 
 		{ // angle labels
@@ -494,6 +513,9 @@ export class Measure extends THREE.Object3D {
 			angleLabel.material.depthTest = false;
 			angleLabel.material.opacity = 1;
 			angleLabel.visible = false;
+
+			setHoverEvents(angleLabel.sprite);
+
 			this.angleLabels.push(angleLabel);
 			this.add(angleLabel);
 		}
@@ -508,6 +530,8 @@ export class Measure extends THREE.Object3D {
 			coordinateLabel.visible = false;
 			this.coordinateLabels.push(coordinateLabel);
 			this.add(coordinateLabel);
+
+			setHoverEvents(coordinateLabel.sprite);
 		}
 
 		{ // Event Listeners
@@ -1023,9 +1047,20 @@ export class Measure extends THREE.Object3D {
 				suffix = this.lengthUnitDisplay.code;
 			}
 
-			let txtArea = Utils.addCommas(area.toFixed(1));
-			let txtArea3D = Utils.addCommas(area3D.toFixed(1));
-			let msg =  `${txtArea}/${txtArea3D} ${suffix}\u00B2`;
+			//let txtArea = Utils.addCommas(area.toFixed(1));
+			//let txtArea3D = Utils.addCommas(area3D.toFixed(1));
+			this.userData = {
+				...(this.userData || {}),
+				area2d: area,
+				area3d: area3D,
+				suffix: `${suffix}\u00B2`,
+			};
+
+			const msgArea = area3D || area || 0;
+			let txtArea = Utils.addCommas(msgArea.toFixed(1));
+
+			// let msg =  `${txtArea}/${txtArea3D} ${suffix}\u00B2`;
+			let msg =  `${txtArea} ${suffix}\u00B2`;
 			this.areaLabel.setText(msg);
 		}
 

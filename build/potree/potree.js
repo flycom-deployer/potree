@@ -128898,6 +128898,15 @@
 	    }
 	}
 
+	function setHoverEvents(object) {
+		object.addEventListener('mouseover', () => {
+			object.material.opacity = 0.0;
+		});
+		object.addEventListener('mouseleave',  () => {
+			object.material.opacity = 1.0;
+		});
+	}
+
 	function createHeightLine(){
 		let lineGeometry = new LineGeometry();
 
@@ -128934,6 +128943,8 @@
 		heightLabel.material.opacity = 1;
 		heightLabel.visible = false;
 
+		setHoverEvents(heightLabel.sprite);
+
 		return heightLabel;
 	}
 
@@ -128948,6 +128959,8 @@
 		areaLabel.material.opacity = 1;
 		areaLabel.visible = false;
 
+		setHoverEvents(areaLabel.sprite);
+
 		return areaLabel;
 	}
 
@@ -128961,6 +128974,8 @@
 		circleRadiusLabel.material.depthTest = false;
 		circleRadiusLabel.material.opacity = 1;
 		circleRadiusLabel.visible = false;
+
+		setHoverEvents(circleRadiusLabel.sprite);
 
 		return circleRadiusLabel;
 	}
@@ -129143,6 +129158,8 @@
 			label.fontsize = 16;
 			label.material.depthTest = false;
 			label.material.opacity = 1;
+
+			setHoverEvents(label.sprite);
 
 			azimuth.label = label;
 		}
@@ -129375,6 +129392,8 @@
 				edgeLabel.fontsize = 16;
 				this.edgeLabels.push(edgeLabel);
 				this.add(edgeLabel);
+
+				setHoverEvents(edgeLabel.sprite);
 			}
 
 			{ // angle labels
@@ -129385,6 +129404,9 @@
 				angleLabel.material.depthTest = false;
 				angleLabel.material.opacity = 1;
 				angleLabel.visible = false;
+
+				setHoverEvents(angleLabel.sprite);
+
 				this.angleLabels.push(angleLabel);
 				this.add(angleLabel);
 			}
@@ -129399,6 +129421,8 @@
 				coordinateLabel.visible = false;
 				this.coordinateLabels.push(coordinateLabel);
 				this.add(coordinateLabel);
+
+				setHoverEvents(coordinateLabel.sprite);
 			}
 
 			{ // Event Listeners
@@ -129914,9 +129938,20 @@
 					suffix = this.lengthUnitDisplay.code;
 				}
 
-				let txtArea = Utils.addCommas(area.toFixed(1));
-				let txtArea3D = Utils.addCommas(area3D.toFixed(1));
-				let msg =  `${txtArea}/${txtArea3D} ${suffix}\u00B2`;
+				//let txtArea = Utils.addCommas(area.toFixed(1));
+				//let txtArea3D = Utils.addCommas(area3D.toFixed(1));
+				this.userData = {
+					...(this.userData || {}),
+					area2d: area,
+					area3d: area3D,
+					suffix: `${suffix}\u00B2`,
+				};
+
+				const msgArea = area3D || area || 0;
+				let txtArea = Utils.addCommas(msgArea.toFixed(1));
+
+				// let msg =  `${txtArea}/${txtArea3D} ${suffix}\u00B2`;
+				let msg =  `${txtArea} ${suffix}\u00B2`;
 				this.areaLabel.setText(msg);
 			}
 
@@ -130307,6 +130342,7 @@
 		 * @param nStr
 		 * @returns
 		 */
+	/*
 		static addCommas (nStr) {
 			nStr += '';
 			let x = nStr.split('.');
@@ -130322,6 +130358,23 @@
 		static removeCommas (str) {
 			return str.replace(/,/g, '');
 		}
+	*/
+
+	static addCommas(nStr) {
+	    nStr = nStr.replace('.', ','); // Replace the decimal dot with a comma
+	    let x = nStr.split(',');
+	    let x1 = x[0];
+	    let x2 = x.length > 1 ? ',' + x[1] : ''; // Keep the decimal part with a comma
+	    let rgx = /(\d+)(\d{3})/;
+	    while (rgx.test(x1)) {
+	        x1 = x1.replace(rgx, '$1' + '.' + '$2'); // Use dot for thousands separator
+	    }
+	    return x1 + x2;
+	}
+
+	static removeCommas(str) {
+	    return str.replace(/\./g, '').replace(/,/g, '.'); // Remove thousands separator (dot) and convert decimal comma to dot
+	}
 
 		/**
 		 * create worker from a string
@@ -157503,6 +157556,44 @@ ENDSEC
 		}
 
 		onMouseMove (e) {
+			function updateHoverStates(currentHoveredElements = [], lastHoveredElements = []) {
+			  // Convert arrays to sets for O(1) membership tests
+			  const currentSet = new Set(currentHoveredElements);
+			  const lastSet = new Set(lastHoveredElements);
+
+			  const newlyHovered = [];
+			  const noLongerHovered = [];
+
+			  // Find newly hovered: in currentSet but not in lastSet
+			  for (const el of currentSet) {
+				if (!lastSet.has(el)) {
+				  newlyHovered.push(el);
+				}
+			  }
+
+			  // Find no longer hovered: in lastSet but not in currentSet
+			  for (const el of lastSet) {
+				if (!currentSet.has(el)) {
+				  noLongerHovered.push(el);
+				}
+			  }
+
+			  // Dispatch events
+			  for (let el of newlyHovered) {
+				el.dispatchEvent({
+				  type: 'mouseover',
+				  object: el,
+				});
+			  }
+
+			  for (let el of noLongerHovered) {
+				el.dispatchEvent({
+				  type: 'mouseleave',
+				  object: el,
+				});
+			  }
+			}
+
 			e.preventDefault();
 
 			let rect = this.domElement.getBoundingClientRect();
@@ -157515,6 +157606,12 @@ ENDSEC
 				let names = hoveredElements.map(h => h.object.name).join(", ");
 				if (this.logMessages) console.log(`${this.constructor.name}: onMouseMove; hovered: '${names}'`);
 			}
+
+			// non-mesh types, sprites...
+			updateHoverStates(
+				hoveredElements.map(a => a.object).filter(a => !a.isMesh),
+				this.hoveredElements.map(a => a.object).filter(a => !a.isMesh)
+			);
 
 			if (this.drag) {
 				this.drag.mouse = e.buttons;
@@ -157550,8 +157647,8 @@ ENDSEC
 					}
 				}
 			}else {
-				let curr = hoveredElements.map(a => a.object).find(a => true);
-				let prev = this.hoveredElements.map(a => a.object).find(a => true);
+				let curr = hoveredElements.map(a => a.object).find(a => a.isMesh);
+				let prev = this.hoveredElements.map(a => a.object).find(a => a.isMesh);
 
 				if(curr !== prev){
 					if(curr){
@@ -157775,7 +157872,6 @@ ENDSEC
 						let hasInteractableListener = interactableListeners.filter((e) => {
 							return node._listeners[e] !== undefined;
 						}).length > 0;
-
 						if (hasInteractableListener) {
 							interactables.push(node);
 						}
@@ -157789,6 +157885,9 @@ ENDSEC
 			let raycaster = new Raycaster$1();
 			raycaster.ray.set(ray.origin, ray.direction);
 			raycaster.params.Line.threshold = 0.2;
+
+			// TODO Set the camera on the raycaster so sprites can be intersected.
+	    	raycaster.camera = camera;
 
 			let intersections = raycaster.intersectObjects(interactables.filter(o => o.visible), false);
 
@@ -238750,9 +238849,7 @@ Char: ${this.c}`;
 
 	/**
 	 * Fast GPU picker that handles dynamic scenes and objects for Three.JS
-	 *
-	 * @author bzztbomb https://github.com/bzztbomb
-	 * @author jfaust https://github.com/jfaust
+	 * based on: jfaust https://github.com/jfaust
 	 */
 
 	var GPUPicker = function (renderer, scene, camera) {
@@ -238801,37 +238898,18 @@ Char: ${this.c}`;
 	    this.raycastPick = function (rayOrigin, rayDirection, viewer, shouldPickObject) {
 	        shouldPickObjectCB = shouldPickObject;
 
-	        // Step 1: Create an offscreen camera that mimics the main camera
 	        var offscreenCamera = new PerspectiveCamera$1(camera.fov, camera.aspect, camera.near, camera.far);
-	        offscreenCamera.position.copy(rayOrigin);  // Set the camera's position to the ray's origin
+	        offscreenCamera.position.copy(rayOrigin);
+	        var targetPoint = rayOrigin.clone().add(rayDirection);
+	        offscreenCamera.lookAt(targetPoint);
 
-	        // Step 2: Adjust the offscreen camera to point along the ray's direction
-	        // Instead of using lookAt, calculate the correct direction vector
-	        var targetPoint = rayOrigin.clone().add(rayDirection);  // Calculate the target point in the world
-	        offscreenCamera.lookAt(targetPoint);  // Point the camera towards this direction
-
-	        // Step 3: Set up the picking render target (1x1 pixel)
-	        var pickingTarget = new WebGLRenderTarget$1(1, 1, {
-	            minFilter: NearestFilter$1,
-	            magFilter: NearestFilter$1,
-	            format: RGBAFormat$1,
-	            encoding: LinearEncoding$1
-	        });
-
-	        var pixelBuffer = new Uint8Array(4);  // Buffer to store the pixel data
-
-	        // Step 4: Render the scene for picking with the offscreen camera
 	        renderer.setRenderTarget(pickingTarget);
 	        renderer.setClearColor(0xffffff);
 	        renderer.clear();
 
-	        // Step 5: Traverse the scene and replace materials with picking materials
 	        scene.traverse(function (object) {
 	            if (object.isMesh) {
-	                // Save the original material
 	                object.userData.originalMaterial = object.material;
-
-	                // Create a special picking material that encodes the object ID
 	                object.material = new ShaderMaterial$1({
 	                    vertexShader: ShaderChunk$1.meshbasic_vert,
 	                    fragmentShader: `
@@ -238841,32 +238919,37 @@ Char: ${this.c}`;
                         }
                     `,
 	                    uniforms: {
-	                        objectId: {
-	                            value: [
-	                                (object.id >> 24 & 255) / 255,
-	                                (object.id >> 16 & 255) / 255,
-	                                (object.id >> 8 & 255) / 255,
-	                                (object.id & 255) / 255
-	                            ]
-	                        }
-	                    }
+	                        objectId: { value: [
+	                            (object.id >> 24 & 255) / 255,
+	                            (object.id >> 16 & 255) / 255,
+	                            (object.id >> 8 & 255) / 255,
+	                            (object.id & 255) / 255
+	                        ] }
+	                    },
+	                    depthTest: true,
+	                    depthWrite: false,
+	                    transparent: false
 	                });
 	            }
 	        });
 
-	        renderer.render(scene, offscreenCamera);  // Render the scene with the offscreen camera
+	        renderer.render(scene, offscreenCamera);
 
-	        // Step 5: Read the pixel from the picking render target
+	        var pixelBuffer = new Uint8Array(4);
 	        renderer.readRenderTargetPixels(pickingTarget, 0, 0, 1, 1, pixelBuffer);
-	        renderer.setRenderTarget(null);  // Reset the render target
 
-	        // Step 6: Convert pixelBuffer to object ID
+	        scene.traverse(function (object) {
+	            if (object.isMesh) {
+	                object.material = object.userData.originalMaterial || object.material;
+	                delete object.userData.originalMaterial;
+	            }
+	        });
+
+	        renderer.setRenderTarget(null);
+	        renderer.state.reset();
+
 	        var val = (pixelBuffer[0] << 24) | (pixelBuffer[1] << 16) | (pixelBuffer[2] << 8) | pixelBuffer[3];
-	        if (val === 0xffffffff) {
-	            return -1;  // No object was picked, return -1
-	        }
-
-	        return val;  // Return the object ID
+	        return val === 0xffffffff ? -1 : val;
 	    };
 
 	    function renderList() {

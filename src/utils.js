@@ -220,6 +220,7 @@ export class Utils {
 	 * @param nStr
 	 * @returns
 	 */
+/*
 	static addCommas (nStr) {
 		nStr += '';
 		let x = nStr.split('.');
@@ -235,6 +236,23 @@ export class Utils {
 	static removeCommas (str) {
 		return str.replace(/,/g, '');
 	}
+*/
+
+static addCommas(nStr) {
+    nStr = nStr.replace('.', ','); // Replace the decimal dot with a comma
+    let x = nStr.split(',');
+    let x1 = x[0];
+    let x2 = x.length > 1 ? ',' + x[1] : ''; // Keep the decimal part with a comma
+    let rgx = /(\d+)(\d{3})/;
+    while (rgx.test(x1)) {
+        x1 = x1.replace(rgx, '$1' + '.' + '$2'); // Use dot for thousands separator
+    }
+    return x1 + x2;
+}
+
+static removeCommas(str) {
+    return str.replace(/\./g, '').replace(/,/g, '.'); // Remove thousands separator (dot) and convert decimal comma to dot
+}
 
 	/**
 	 * create worker from a string
