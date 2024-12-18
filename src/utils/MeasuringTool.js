@@ -367,6 +367,15 @@ export class MeasuringTool extends EventDispatcher{
 
 						return;
 					}
+
+					// check if point is intersection
+					const {x, y, z} = measure.points[measure.points.length - 1].position.clone();
+
+					if (!x && !y && !z) {
+						this.viewer.inputHandler.startDragging(measure.spheres[measure.spheres.length - 1]);
+						return;
+					}
+
 					measure.addMarker(measure.points[measure.points.length - 1].position.clone());
 
 					if (measure.points.length >= measure.maxMarkers) {

@@ -580,6 +580,17 @@ export class Measure extends THREE.Object3D {
 			};
 
 			let drop = e => {
+				// check if point is intersection
+				const {x, y, z} = this.points[this.points.length - 1].position.clone();
+
+				if (!x && !y && !z) {
+					setTimeout(() => {
+						viewer.inputHandler.startDragging(this.spheres[this.spheres.length - 1]);
+					}, 50);
+
+					return;
+				}
+
 				if (!this.adding && !this.updating) {
 					this.updating = true;
 				}
@@ -823,7 +834,7 @@ export class Measure extends THREE.Object3D {
 			{ // coordinate labels
 				let coordinateLabel = this.coordinateLabels[0];
 
-				let msg = position.toArray().map(p => Utils.addCommas(p.toFixed(2))).join(" / ");
+				let msg = position.toArray().map(p => Utils.addCommas2(p.toFixed(2))).join(" / ");
 				coordinateLabel.setText(msg);
 
 				// coordinateLabel.visible = this.showCoordinates;
@@ -905,7 +916,7 @@ export class Measure extends THREE.Object3D {
 					suffix = this.lengthUnitDisplay.code;
 				}
 
-				let txtLength = Utils.addCommas(distance.toFixed(2));
+				let txtLength = Utils.addCommas2(distance.toFixed(2));
 				edgeLabel.setText(`${txtLength} ${suffix}`);
 				edgeLabel.visible = this.showDistances && (index < lastIndex || this.closed) && this.points.length >= 2 && distance > 0;
 			}
@@ -924,7 +935,7 @@ export class Measure extends THREE.Object3D {
 				let labelPos = point.position.clone().add(dir.multiplyScalar(dist));
 				angleLabel.position.copy(labelPos);
 
-				let msg = Utils.addCommas((angle * (180.0 / Math.PI)).toFixed(1)) + '\u00B0';
+				let msg = Utils.addCommas2((angle * (180.0 / Math.PI)).toFixed(1)) + '\u00B0';
 				angleLabel.setText(msg);
 
 				angleLabel.visible = this.showAngles && (index < lastIndex || this.closed) && this.points.length >= 3 && angle > 0;
@@ -974,7 +985,7 @@ export class Measure extends THREE.Object3D {
 					suffix = this.lengthUnitDisplay.code;
 				}
 
-				let txtHeight = Utils.addCommas(height.toFixed(2));
+				let txtHeight = Utils.addCommas2(height.toFixed(2));
 				let msg = `${txtHeight} ${suffix}`;
 				this.heightLabel.setText(msg);
 			}
@@ -1047,8 +1058,8 @@ export class Measure extends THREE.Object3D {
 				suffix = this.lengthUnitDisplay.code;
 			}
 
-			//let txtArea = Utils.addCommas(area.toFixed(1));
-			//let txtArea3D = Utils.addCommas(area3D.toFixed(1));
+			//let txtArea = Utils.addCommas2(area.toFixed(1));
+			//let txtArea3D = Utils.addCommas2(area3D.toFixed(1));
 			this.userData = {
 				...(this.userData || {}),
 				area2d: area,
@@ -1057,7 +1068,7 @@ export class Measure extends THREE.Object3D {
 			};
 
 			const msgArea = area3D || area || 0;
-			let txtArea = Utils.addCommas(msgArea.toFixed(1));
+			let txtArea = Utils.addCommas2(msgArea.toFixed(1));
 
 			// let msg =  `${txtArea}/${txtArea3D} ${suffix}\u00B2`;
 			let msg =  `${txtArea} ${suffix}\u00B2`;
