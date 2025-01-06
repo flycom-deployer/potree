@@ -25,6 +25,13 @@ export class AnnotationTool extends EventDispatcher{
 			title: "Annotation Title",
 			description: `Annotation Description`
 		});
+
+		if(this.viewer.isMeasuring) {
+			this.viewer.scene.removeMeasurement(this.viewer.isMeasuring);
+		}
+
+		this.viewer.isMeasuring = annotation;
+
 		this.dispatchEvent({type: 'start_inserting_annotation', annotation: annotation});
 
 		const annotations = this.viewer.scene.annotations;
@@ -35,12 +42,26 @@ export class AnnotationTool extends EventDispatcher{
 			finish: null,
 		};
 
+		const finishAnnotation = () => {
+			this.viewer.dispatchEvent({
+				type: 'measurement_finished',
+				name: this.viewer.isMeasuring?.title || this.viewer.isMeasuring?.name || '',
+			});
+
+			this.viewer.isMeasuring = false;
+
+			this.viewer.inputHandler.canDoubleClick = true;
+
+		};
+
 		let insertionCallback = (e) => {
 			if (e.button === THREE.MOUSE.LEFT) {
 				callbacks.finish();
 			} else if (e.button === THREE.MOUSE.RIGHT) {
 				callbacks.cancel();
 			}
+
+			finishAnnotation();
 		};
 
 		callbacks.cancel = e => {

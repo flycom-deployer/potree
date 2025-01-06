@@ -65,6 +65,12 @@ export class VolumeTool extends EventDispatcher{
 			volume = new BoxVolume();
 		}
 
+		if(this.viewer.isMeasuring) {
+			this.viewer.scene.removeMeasurement(this.viewer.isMeasuring);
+		}
+
+		this.viewer.isMeasuring = volume;
+
 		volume.clip = args.clip || false;
 		volume.name = args.name || 'Volume';
 
@@ -78,6 +84,18 @@ export class VolumeTool extends EventDispatcher{
 
 		let cancel = {
 			callback: null
+		};
+
+		const finishVolume = () => {
+			this.viewer.dispatchEvent({
+				type: 'measurement_finished',
+				name: this.viewer.isMeasuring?.title || this.viewer.isMeasuring?.name || '',
+			});
+
+			this.viewer.isMeasuring = false;
+
+			this.viewer.inputHandler.canDoubleClick = true;
+
 		};
 
 		let drag = e => {
@@ -97,6 +115,11 @@ export class VolumeTool extends EventDispatcher{
 				// let pp = new THREE.Vector4(wp.x, wp.y, wp.z).applyMatrix4(camera.projectionMatrix);
 				let w = Math.abs((wp.z / 5));
 				volume.scale.set(w, w, w);
+
+				volume.dispatchEvent({
+					type: "position_changed",
+					object: volume
+				});
 			}
 		};
 
@@ -105,6 +128,7 @@ export class VolumeTool extends EventDispatcher{
 			volume.removeEventListener('drop', drop);
 
 			cancel.callback();
+			finishVolume();
 		};
 
 		cancel.callback = e => {

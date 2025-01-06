@@ -7,6 +7,8 @@ const UNDEFINED_CONTROLLER = 0;
 const EARTH_CONTROLLER = 1;
 const ORBIT_CONTROLLER = 2;
 
+const SHIFT_KEY_CODE = 16;
+
 export class EarthOrbitControls extends EventDispatcher {
 	constructor (viewer) {
 		super(viewer);
@@ -25,6 +27,8 @@ export class EarthOrbitControls extends EventDispatcher {
 
 		this.isPivotIndicator = false;
 		this.previousTouch = null;
+
+		this.keyCode = undefined;
 
 		this.initControllers();
 		this.setupEventListeners();
@@ -71,7 +75,20 @@ export class EarthOrbitControls extends EventDispatcher {
         this.addEventListener('touchstart', this.onTouchStart);
         this.addEventListener('touchend', this.onTouchEnd);
         this.addEventListener('touchmove', this.onTouchMove);
+
+		this.viewer.inputHandler.addEventListener('keydown', this.onKeyDown);
+		this.viewer.inputHandler.addEventListener('keyup', this.onKeyUp);
     }
+
+	onKeyDown = e => {
+		this.keyCode = e.keyCode;
+		console.log('Key down', e);
+	};
+
+	onKeyUp = e => {
+		this.keyCode = undefined;
+		console.log('Key up', e);
+	};
 
 	onMouseDown = e => {
 		let I = Utils.getMouseIntersection(
@@ -522,7 +539,7 @@ export class EarthOrbitControls extends EventDispatcher {
 		let mouse = e.drag.end;
 		let domElement = this.viewer.renderer.domElement;
 
-		if (e.drag.mouse === MOUSE.LEFT) {
+		if (e.drag.mouse === MOUSE.LEFT && !this.keyCode) {
 
 			let ray = Utils.mouseToRay(mouse, camera, domElement.clientWidth, domElement.clientHeight);
 
@@ -573,7 +590,7 @@ export class EarthOrbitControls extends EventDispatcher {
 				view.pan(px, py);
 			}
 
-		} else if (e.drag.mouse === MOUSE.RIGHT) {
+		} else if ((e.drag.mouse === MOUSE.RIGHT) || (e.drag.mouse === MOUSE.LEFT && this.keyCode === SHIFT_KEY_CODE)) {
 			let ndrag = {
 				x: e.drag.lastDrag.x / this.renderer.domElement.clientWidth,
 				y: e.drag.lastDrag.y / this.renderer.domElement.clientHeight

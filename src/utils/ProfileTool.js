@@ -56,6 +56,12 @@ export class ProfileTool extends EventDispatcher {
 		let profile = new Profile();
 		profile.name = args.name || 'Profile';
 
+		if(this.viewer.isMeasuring) {
+			this.viewer.scene.removeMeasurement(this.viewer.isMeasuring);
+		}
+
+		this.viewer.isMeasuring = profile;
+
 		this.dispatchEvent({
 			type: 'start_inserting_profile',
 			profile: profile
@@ -67,8 +73,28 @@ export class ProfileTool extends EventDispatcher {
 			callback: null
 		};
 
+		let touchStart;
+		let touchMove;
+		let previousDblClickTouch = null;
+		let dblClickTimeout;
+		const DOUBLE_CLICK_TRESHHOLD = 30;
+		const DOUBLE_CLICK_TIMEOUT = 300;
+
+		const finishProfile = () => {
+			this.viewer.dispatchEvent({
+				type: 'measurement_finished',
+				name: this.viewer.isMeasuring?.name || '',
+			});
+
+			this.viewer.isMeasuring = false;
+
+			this.viewer.inputHandler.canDoubleClick = true;
+
+		};
+
 		let insertionCallback = (e) => {
 			if(e.button === THREE.MOUSE.LEFT){
+/*
 				if(profile.points.length <= 1){
 					let camera = this.viewer.scene.getActiveCamera();
 					let distance = camera.position.distanceTo(profile.points[0]);
@@ -83,8 +109,56 @@ export class ProfileTool extends EventDispatcher {
 
 				this.viewer.inputHandler.startDragging(
 					profile.spheres[profile.spheres.length - 1]);
+*/
+					let isDblClick = false;
+
+					if (previousDblClickTouch) {
+						if (dblClickTimeout) {
+							clearTimeout(dblClickTimeout);
+						}
+						const dx = Math.abs(e.pageX - previousDblClickTouch.pageX);
+						const dy = Math.abs(e.pageY - previousDblClickTouch.pageY);
+
+						if (dx < DOUBLE_CLICK_TRESHHOLD && dy < DOUBLE_CLICK_TRESHHOLD) {
+							isDblClick = true;
+							previousDblClickTouch = null;
+						} else {
+							previousDblClickTouch = e;
+						}
+					}
+
+					if (!dblClickTimeout) {
+						dblClickTimeout = setTimeout(() => {
+							previousDblClickTouch = null;
+							dblClickTimeout = null;
+						}, 300);
+					}
+
+					if (isDblClick) {
+						cancel.callback();
+						finishProfile();
+
+						return;
+					}
+
+				if(profile.points.length <= 1){
+					let camera = this.viewer.scene.getActiveCamera();
+					let distance = camera.position.distanceTo(profile.points[0]);
+					let clientSize = this.viewer.renderer.getSize(new THREE.Vector2());
+					let pr = Utils.projectedRadius(1, camera, distance, clientSize.width, clientSize.height);
+					let width = (10 / pr);
+
+					profile.setWidth(width);
+				}
+
+				profile.addMarker(profile.points[profile.points.length - 1].clone());
+
+				this.viewer.inputHandler.startDragging(profile.spheres[profile.spheres.length - 1]);
+					previousDblClickTouch = e;
+
 			} else if (e.button === THREE.MOUSE.RIGHT) {
 				cancel.callback();
+				finishProfile();
 			}
 		};
 
@@ -103,9 +177,11 @@ export class ProfileTool extends EventDispatcher {
 
 		this.viewer.scene.addProfile(profile);
 
+		this.viewer.inputHandler.canDoubleClick = false;
+
 		return profile;
 	}
-	
+
 	update(){
 		let camera = this.viewer.scene.getActiveCamera();
 		let profiles = this.viewer.scene.profiles;
@@ -117,7 +193,7 @@ export class ProfileTool extends EventDispatcher {
 
 		// make size independant of distance
 		for(let profile of profiles){
-			for(let sphere of profile.spheres){				
+			for(let sphere of profile.spheres){
 				let distance = camera.position.distanceTo(sphere.getWorldPosition(new THREE.Vector3()));
 				let pr = Utils.projectedRadius(1, camera, distance, clientWidth, clientHeight);
 				let scale = (15 / pr);

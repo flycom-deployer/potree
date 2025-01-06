@@ -51,6 +51,8 @@ export class Viewer extends EventDispatcher{
 
     	window.addEventListener('resize', this.onWindowResize.bind(this))
 
+		this.opacity3DTiles = 1;
+
 		this.renderArea = domElement;
 		this.guiLoaded = false;
 		this.guiLoadTasks = [];
@@ -425,6 +427,19 @@ export class Viewer extends EventDispatcher{
 				maximumScreenSpaceError: 16,
 				maxConcurrency: 2,
 				wireframe: properties?.wireframe ?? false,
+				contentPostProcess: mesh => {
+					mesh.material.transparent = true;
+					mesh.material.opacity = this.opacity3DTiles; // example: 50% transparency
+					mesh.material.needsUpdate = true;
+
+					mesh.traverse((child) => {
+					  if (child.isMesh) {
+						child.material.transparent = true;
+						child.material.opacity = this.opacity3DTiles;
+						child.material.needsUpdate = true;
+					  }
+					});
+				}
             },
         });
 
@@ -453,6 +468,46 @@ export class Viewer extends EventDispatcher{
 
 		return parentObject;
     }
+
+	set3DTilesOpacity(opacity = 1, uuid) {
+		this.opacity3DTiles = opacity;
+
+		// Check if there are any meshes at all
+		if (!this.scene.meshes || this.scene.meshes.length === 0) {
+			return;
+		}
+
+		// If no UUID is given, update opacity on ALL meshes
+		if (!uuid) {
+			this.scene.meshes.forEach((mesh) => {
+				mesh.traverse((child) => {
+					if (child.isMesh) {
+						child.material.transparent = true;
+						child.material.opacity = this.opacity3DTiles;
+						child.material.needsUpdate = true;
+					}
+				});
+			});
+		} else {
+
+		// Find the single mesh with the matching UUID
+		const object3D = this.scene.meshes.find((obj) => obj.uuid === uuid);
+
+		if (!object3D) {
+		  	// If there's no mesh with this UUID, exit or handle error
+		  	return;
+		}
+
+		// Traverse the matching object’s hierarchy
+		object3D.traverse((child) => {
+		  	if (child.isMesh) {
+				child.material.transparent = true;
+				child.material.opacity = this.opacity3DTiles;
+				child.material.needsUpdate = true;
+		  	}
+			});
+		}
+	}
 
 	addMesh(mesh) {
         if (!this.scene.meshes) {
@@ -819,6 +874,8 @@ export class Viewer extends EventDispatcher{
 	};
 
 	setEDLOpacity (value) {
+		// this.set3DTilesOpacity(value)
+
 		if (this.edlOpacity !== value) {
 			this.edlOpacity = value;
 			this.dispatchEvent({'type': 'edl_opacity_changed', 'viewer': this});
@@ -2040,7 +2097,7 @@ export class Viewer extends EventDispatcher{
 
 			// volumes with clipping enabled
 			//boxes.push(...this.scene.volumes.filter(v => (v.clip)));
-			boxes.push(...this.scene.volumes.filter(v => (v.clip && v instanceof BoxVolume)));
+			boxes.push(...this.scene.volumes.filter(v => (v.clip && v.visible && v instanceof BoxVolume)));
 
 			// profile segments
 			for(let profile of this.scene.profiles){
@@ -2059,7 +2116,7 @@ export class Viewer extends EventDispatcher{
 				return {box: box, inverse: boxInverse, position: boxPosition};
 			});
 
-			let clipPolygons = this.scene.polygonClipVolumes.filter(vol => vol.initialized);
+			let clipPolygons = this.scene.polygonClipVolumes.filter(vol => vol.initialized && vol.visible);
 
 			// set clip volumes in material
 			for(let pointcloud of visiblePointClouds){

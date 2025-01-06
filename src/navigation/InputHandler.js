@@ -313,6 +313,12 @@ export class InputHandler extends EventDispatcher {
 	onKeyUp (e) {
 		if (this.logMessages) console.log(this.constructor.name + ': onKeyUp');
 
+		this.dispatchEvent({
+			type: 'keyup',
+			keyCode: e.keyCode,
+			event: e
+		});
+
 		delete this.pressedKeys[e.keyCode];
 
 		e.preventDefault();
@@ -364,7 +370,7 @@ export class InputHandler extends EventDispatcher {
 
 		let consumed = false;
 		let consume = () => { return consumed = true; };
-		if (this.hoveredElements.length === 0) {
+		// if (this.hoveredElements.length === 0) {
 			for (let inputListener of this.getSortedListeners()) {
 				inputListener.dispatchEvent({
 					type: 'mousedown',
@@ -372,7 +378,7 @@ export class InputHandler extends EventDispatcher {
 					mouse: this.mouse
 				});
 			}
-		}else{
+		//}else{
 			for(let hovered of this.hoveredElements){
 				let object = hovered.object;
 				object.dispatchEvent({
@@ -386,7 +392,7 @@ export class InputHandler extends EventDispatcher {
 					break;
 				}
 			}
-		}
+		//}
 
 		if (!this.drag) {
 			let target = this.hoveredElements
@@ -417,7 +423,7 @@ export class InputHandler extends EventDispatcher {
 
 		let consumed = false;
 		let consume = () => { return consumed = true; };
-		if (this.hoveredElements.length === 0) {
+		//if (this.hoveredElements.length === 0) {
 			for (let inputListener of this.getSortedListeners()) {
 				inputListener.dispatchEvent({
 					type: 'mouseup',
@@ -430,7 +436,7 @@ export class InputHandler extends EventDispatcher {
 					break;
 				}
 			}
-		}else{
+		//}else{
 			let hovered = this.hoveredElements
 				.map(e => e.object)
 				.find(e => (e._listeners && e._listeners['mouseup']));
@@ -441,7 +447,7 @@ export class InputHandler extends EventDispatcher {
 					consume: consume
 				});
 			}
-		}
+		//}
 
 		if (this.drag) {
 			if (this.drag.object) {

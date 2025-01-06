@@ -317,6 +317,7 @@ export class Measure extends THREE.Object3D {
 		this.constructor.counter = (this.constructor.counter === undefined) ? 0 : this.constructor.counter + 1;
 
 		this.name = 'Measure_' + this.constructor.counter;
+		this.clip = false;
 		this.points = [];
 		this._showDistances = true;
 		this._showCoordinates = false;
@@ -918,7 +919,8 @@ export class Measure extends THREE.Object3D {
 
 				let txtLength = Utils.addCommas2(distance.toFixed(2));
 				edgeLabel.setText(`${txtLength} ${suffix}`);
-				edgeLabel.visible = this.showDistances && (index < lastIndex || this.closed) && this.points.length >= 2 && distance > 0;
+
+				edgeLabel.visible = !this.clip && this.showDistances && (index < lastIndex || this.closed) && this.points.length >= 2 && distance > 0;
 			}
 
 			{ // angle labels
@@ -1048,7 +1050,7 @@ export class Measure extends THREE.Object3D {
 
 		{ // update area label
 			this.areaLabel.position.copy(centroid);
-			this.areaLabel.visible = this.showArea && this.points.length >= 3;
+			this.areaLabel.visible = !this.clip && this.showArea && this.points.length >= 3;
 			let area = this.getArea();
 			let area3D = this.getArea3D();
 

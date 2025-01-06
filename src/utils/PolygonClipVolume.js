@@ -2,13 +2,14 @@
 import * as THREE from "../../libs/three.js/build/three.module.js";
 
 export class PolygonClipVolume extends THREE.Object3D{
-	
+
 	constructor(camera){
 		super();
 
 		this.constructor.counter = (this.constructor.counter === undefined) ? 0 : this.constructor.counter + 1;
 		this.name = "polygon_clip_volume_" + this.constructor.counter;
 
+		this.points = [];
 		this.camera = camera.clone();
 		this.camera.rotation.set(...camera.rotation.toArray()); // [r85] workaround because camera.clone() doesn't work on rotation
 		this.camera.rotation.order = camera.rotation.order;
@@ -24,8 +25,10 @@ export class PolygonClipVolume extends THREE.Object3D{
 		this.initialized = false;
 	}
 
-	addMarker() {
-
+	addMarker(point) {
+		if(point) {
+			this.points.push(point);
+		}
 		let marker = new THREE.Mesh();
 
 		let cancel;
@@ -40,21 +43,28 @@ export class PolygonClipVolume extends THREE.Object3D{
 
 			marker.position.copy(projectedPos);
 		};
-		
-		let drop = e => {	
+
+		let drop = e => {
 			cancel();
 		};
-		
+
 		cancel = e => {
 			marker.removeEventListener("drag", drag);
 			marker.removeEventListener("drop", drop);
 		};
-		
+
 		marker.addEventListener("drag", drag);
 		marker.addEventListener("drop", drop);
 
 
 		this.markers.push(marker);
+
+		let event = {
+			type: 'marker_added',
+			volume: this,
+		};
+
+		this.dispatchEvent(event);
 	}
 
 	removeLastMarker() {

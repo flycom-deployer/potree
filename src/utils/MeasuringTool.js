@@ -209,6 +209,7 @@ export class MeasuringTool extends EventDispatcher{
 		measure.showEdges = pick(args.showEdges, true);
 		measure.closed = pick(args.closed, false);
 		measure.maxMarkers = pick(args.maxMarkers, Infinity);
+		measure.clip = pick(args.clip, false);
 
 		measure.name = args.name || 'Measurement';
 

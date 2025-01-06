@@ -4,6 +4,7 @@ import * as THREE from "../../libs/three.js/build/three.module.js";
 import {ClipVolume} from "./ClipVolume.js";
 import {PolygonClipVolume} from "./PolygonClipVolume.js";
 import { EventDispatcher } from "../EventDispatcher.js";
+import {Utils} from "../utils.js";
 
 export class ClippingTool extends EventDispatcher{
 
@@ -99,6 +100,7 @@ export class ClippingTool extends EventDispatcher{
 		$(domElement.parentElement).append(svg);
 
 		let polyClipVol = new PolygonClipVolume(this.viewer.scene.getActiveCamera().clone());
+		polyClipVol.name = 'PolygonClipVolume';
 
 		this.dispatchEvent({"type": "start_inserting_clipping_volume"});
 
@@ -111,8 +113,18 @@ export class ClippingTool extends EventDispatcher{
 
 		let insertionCallback = (e) => {
 			if(e.button === THREE.MOUSE.LEFT){
+				let I = Utils.getMouseIntersection(
+					{
+						x: e.offsetX,
+						y: e.offsetY,
+					},
+					this.viewer.scene.getActiveCamera(),
+					this.viewer,
+					this.viewer.scene.pointclouds,
+					{ pickClipped: false }
+				);
 
-				polyClipVol.addMarker();
+				polyClipVol.addMarker(I?.location);
 
 				// SVC Screen Line
 				svg.find("polyline").each((index, target) => {

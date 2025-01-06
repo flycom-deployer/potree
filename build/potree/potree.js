@@ -51989,7 +51989,12 @@
 			};
 
 			{ // event listeners
-				this.addEventListener('select', e => {});
+				this.addEventListener('select', e => {
+					this.dispatchEvent({
+						type: "position_changed",
+						object: this
+					});
+				});
 				this.addEventListener('deselect', e => {});
 			}
 
@@ -52012,7 +52017,7 @@
 		}
 
 		update () {
-			
+
 		};
 
 		raycast (raycaster, intersects) {
@@ -52035,7 +52040,7 @@
 					object: this
 				});
 			}
-			
+
 		}
 
 		get modifieable () {
@@ -52132,6 +52137,7 @@
 
 		raycast (raycaster, intersects) {
 			let is = [];
+
 			this.box.raycast(raycaster, is);
 
 			if (is.length > 0) {
@@ -52278,7 +52284,7 @@
 				});
 			}
 		}
-		
+
 		// see https://en.wikipedia.org/wiki/Ellipsoid#Volume
 		getVolume(){
 			return (4 / 3) * Math.PI * this.scale.x * this.scale.y * this.scale.z;
@@ -129208,6 +129214,7 @@
 			this.constructor.counter = (this.constructor.counter === undefined) ? 0 : this.constructor.counter + 1;
 
 			this.name = 'Measure_' + this.constructor.counter;
+			this.clip = false;
 			this.points = [];
 			this._showDistances = true;
 			this._showCoordinates = false;
@@ -129809,7 +129816,8 @@
 
 					let txtLength = Utils.addCommas2(distance.toFixed(2));
 					edgeLabel.setText(`${txtLength} ${suffix}`);
-					edgeLabel.visible = this.showDistances && (index < lastIndex || this.closed) && this.points.length >= 2 && distance > 0;
+
+					edgeLabel.visible = !this.clip && this.showDistances && (index < lastIndex || this.closed) && this.points.length >= 2 && distance > 0;
 				}
 
 				{ // angle labels
@@ -129939,7 +129947,7 @@
 
 			{ // update area label
 				this.areaLabel.position.copy(centroid);
-				this.areaLabel.visible = this.showArea && this.points.length >= 3;
+				this.areaLabel.visible = !this.clip && this.showArea && this.points.length >= 3;
 				let area = this.getArea();
 				let area3D = this.getArea3D();
 
@@ -130076,13 +130084,14 @@
 	}
 
 	class PolygonClipVolume extends Object3D$1{
-		
+
 		constructor(camera){
 			super();
 
 			this.constructor.counter = (this.constructor.counter === undefined) ? 0 : this.constructor.counter + 1;
 			this.name = "polygon_clip_volume_" + this.constructor.counter;
 
+			this.points = [];
 			this.camera = camera.clone();
 			this.camera.rotation.set(...camera.rotation.toArray()); // [r85] workaround because camera.clone() doesn't work on rotation
 			this.camera.rotation.order = camera.rotation.order;
@@ -130098,8 +130107,10 @@
 			this.initialized = false;
 		}
 
-		addMarker() {
-
+		addMarker(point) {
+			if(point) {
+				this.points.push(point);
+			}
 			let marker = new Mesh$1();
 
 			let cancel;
@@ -130114,21 +130125,28 @@
 
 				marker.position.copy(projectedPos);
 			};
-			
-			let drop = e => {	
+
+			let drop = e => {
 				cancel();
 			};
-			
+
 			cancel = e => {
 				marker.removeEventListener("drag", drag);
 				marker.removeEventListener("drop", drop);
 			};
-			
+
 			marker.addEventListener("drag", drag);
 			marker.addEventListener("drop", drop);
 
 
 			this.markers.push(marker);
+
+			let event = {
+				type: 'marker_added',
+				volume: this,
+			};
+
+			this.dispatchEvent(event);
 		}
 
 		removeLastMarker() {
@@ -131444,7 +131462,7 @@
 				</svg>
 			</div>
 		`);
-			
+
 			let svg = domElement.find("svg")[0];
 			let elLine = domElement.find("line")[0];
 			let elStart = domElement.find("circle")[0];
@@ -131504,7 +131522,7 @@
 					//let renderAreaHeight = viewer.renderer.getSize().height;
 
 					let diff = {
-						x: ui.originalPosition.left - ui.position.left, 
+						x: ui.originalPosition.left - ui.position.left,
 						y: ui.originalPosition.top - ui.position.top
 					};
 
@@ -131557,7 +131575,7 @@
 
 					return screenPos;
 				};
-				
+
 				start = toScreen(start);
 				end = toScreen(end);
 
@@ -131817,8 +131835,8 @@
 		}
 
 		hasView () {
-			let hasPosTargetView = this.cameraTarget.x != null;
-			hasPosTargetView = hasPosTargetView && this.cameraPosition.x != null;
+			let hasPosTargetView = this.cameraTarget?.x != null;
+			hasPosTargetView = hasPosTargetView && this.cameraPosition?.y != null;
 
 			let hasRadiusView = this.radius !== undefined;
 
@@ -143494,6 +143512,7 @@ void main() {
 			$(domElement.parentElement).append(svg);
 
 			let polyClipVol = new PolygonClipVolume(this.viewer.scene.getActiveCamera().clone());
+			polyClipVol.name = 'PolygonClipVolume';
 
 			this.dispatchEvent({"type": "start_inserting_clipping_volume"});
 
@@ -143506,8 +143525,18 @@ void main() {
 
 			let insertionCallback = (e) => {
 				if(e.button === MOUSE$2.LEFT){
+					let I = Utils.getMouseIntersection(
+						{
+							x: e.offsetX,
+							y: e.offsetY,
+						},
+						this.viewer.scene.getActiveCamera(),
+						this.viewer,
+						this.viewer.scene.pointclouds,
+						{ pickClipped: false }
+					);
 
-					polyClipVol.addMarker();
+					polyClipVol.addMarker(I?.location);
 
 					// SVC Screen Line
 					svg.find("polyline").each((index, target) => {
@@ -144135,6 +144164,7 @@ void main() {
 			measure.showEdges = pick(args.showEdges, true);
 			measure.closed = pick(args.closed, false);
 			measure.maxMarkers = pick(args.maxMarkers, Infinity);
+			measure.clip = pick(args.clip, false);
 
 			measure.name = args.name || 'Measurement';
 
@@ -144708,6 +144738,12 @@ void main() {
 			let profile = new Profile();
 			profile.name = args.name || 'Profile';
 
+			if(this.viewer.isMeasuring) {
+				this.viewer.scene.removeMeasurement(this.viewer.isMeasuring);
+			}
+
+			this.viewer.isMeasuring = profile;
+
 			this.dispatchEvent({
 				type: 'start_inserting_profile',
 				profile: profile
@@ -144719,8 +144755,74 @@ void main() {
 				callback: null
 			};
 
+			let touchStart;
+			let touchMove;
+			let previousDblClickTouch = null;
+			let dblClickTimeout;
+			const DOUBLE_CLICK_TRESHHOLD = 30;
+			const DOUBLE_CLICK_TIMEOUT = 300;
+
+			const finishProfile = () => {
+				this.viewer.dispatchEvent({
+					type: 'measurement_finished',
+					name: this.viewer.isMeasuring?.name || '',
+				});
+
+				this.viewer.isMeasuring = false;
+
+				this.viewer.inputHandler.canDoubleClick = true;
+
+			};
+
 			let insertionCallback = (e) => {
 				if(e.button === MOUSE$2.LEFT){
+	/*
+					if(profile.points.length <= 1){
+						let camera = this.viewer.scene.getActiveCamera();
+						let distance = camera.position.distanceTo(profile.points[0]);
+						let clientSize = this.viewer.renderer.getSize(new THREE.Vector2());
+						let pr = Utils.projectedRadius(1, camera, distance, clientSize.width, clientSize.height);
+						let width = (10 / pr);
+
+						profile.setWidth(width);
+					}
+
+					profile.addMarker(profile.points[profile.points.length - 1].clone());
+
+					this.viewer.inputHandler.startDragging(
+						profile.spheres[profile.spheres.length - 1]);
+	*/
+						let isDblClick = false;
+
+						if (previousDblClickTouch) {
+							if (dblClickTimeout) {
+								clearTimeout(dblClickTimeout);
+							}
+							const dx = Math.abs(e.pageX - previousDblClickTouch.pageX);
+							const dy = Math.abs(e.pageY - previousDblClickTouch.pageY);
+
+							if (dx < DOUBLE_CLICK_TRESHHOLD && dy < DOUBLE_CLICK_TRESHHOLD) {
+								isDblClick = true;
+								previousDblClickTouch = null;
+							} else {
+								previousDblClickTouch = e;
+							}
+						}
+
+						if (!dblClickTimeout) {
+							dblClickTimeout = setTimeout(() => {
+								previousDblClickTouch = null;
+								dblClickTimeout = null;
+							}, 300);
+						}
+
+						if (isDblClick) {
+							cancel.callback();
+							finishProfile();
+
+							return;
+						}
+
 					if(profile.points.length <= 1){
 						let camera = this.viewer.scene.getActiveCamera();
 						let distance = camera.position.distanceTo(profile.points[0]);
@@ -144733,10 +144835,12 @@ void main() {
 
 					profile.addMarker(profile.points[profile.points.length - 1].clone());
 
-					this.viewer.inputHandler.startDragging(
-						profile.spheres[profile.spheres.length - 1]);
+					this.viewer.inputHandler.startDragging(profile.spheres[profile.spheres.length - 1]);
+						previousDblClickTouch = e;
+
 				} else if (e.button === MOUSE$2.RIGHT) {
 					cancel.callback();
+					finishProfile();
 				}
 			};
 
@@ -144755,9 +144859,11 @@ void main() {
 
 			this.viewer.scene.addProfile(profile);
 
+			this.viewer.inputHandler.canDoubleClick = false;
+
 			return profile;
 		}
-		
+
 		update(){
 			let camera = this.viewer.scene.getActiveCamera();
 			let profiles = this.viewer.scene.profiles;
@@ -144769,7 +144875,7 @@ void main() {
 
 			// make size independant of distance
 			for(let profile of profiles){
-				for(let sphere of profile.spheres){				
+				for(let sphere of profile.spheres){
 					let distance = camera.position.distanceTo(sphere.getWorldPosition(new Vector3$1()));
 					let pr = Utils.projectedRadius(1, camera, distance, clientWidth, clientHeight);
 					let scale = (15 / pr);
@@ -145964,6 +146070,12 @@ void main() {
 				volume = new BoxVolume();
 			}
 
+			if(this.viewer.isMeasuring) {
+				this.viewer.scene.removeMeasurement(this.viewer.isMeasuring);
+			}
+
+			this.viewer.isMeasuring = volume;
+
 			volume.clip = args.clip || false;
 			volume.name = args.name || 'Volume';
 
@@ -145977,6 +146089,18 @@ void main() {
 
 			let cancel = {
 				callback: null
+			};
+
+			const finishVolume = () => {
+				this.viewer.dispatchEvent({
+					type: 'measurement_finished',
+					name: this.viewer.isMeasuring?.title || this.viewer.isMeasuring?.name || '',
+				});
+
+				this.viewer.isMeasuring = false;
+
+				this.viewer.inputHandler.canDoubleClick = true;
+
 			};
 
 			let drag = e => {
@@ -145996,6 +146120,11 @@ void main() {
 					// let pp = new THREE.Vector4(wp.x, wp.y, wp.z).applyMatrix4(camera.projectionMatrix);
 					let w = Math.abs((wp.z / 5));
 					volume.scale.set(w, w, w);
+
+					volume.dispatchEvent({
+						type: "position_changed",
+						object: volume
+					});
 				}
 			};
 
@@ -146004,6 +146133,7 @@ void main() {
 				volume.removeEventListener('drop', drop);
 
 				cancel.callback();
+				finishVolume();
 			};
 
 			cancel.callback = e => {
@@ -156997,6 +157127,13 @@ ENDSEC
 				title: "Annotation Title",
 				description: `Annotation Description`
 			});
+
+			if(this.viewer.isMeasuring) {
+				this.viewer.scene.removeMeasurement(this.viewer.isMeasuring);
+			}
+
+			this.viewer.isMeasuring = annotation;
+
 			this.dispatchEvent({type: 'start_inserting_annotation', annotation: annotation});
 
 			const annotations = this.viewer.scene.annotations;
@@ -157007,12 +157144,26 @@ ENDSEC
 				finish: null,
 			};
 
+			const finishAnnotation = () => {
+				this.viewer.dispatchEvent({
+					type: 'measurement_finished',
+					name: this.viewer.isMeasuring?.title || this.viewer.isMeasuring?.name || '',
+				});
+
+				this.viewer.isMeasuring = false;
+
+				this.viewer.inputHandler.canDoubleClick = true;
+
+			};
+
 			let insertionCallback = (e) => {
 				if (e.button === MOUSE$2.LEFT) {
 					callbacks.finish();
 				} else if (e.button === MOUSE$2.RIGHT) {
 					callbacks.cancel();
 				}
+
+				finishAnnotation();
 			};
 
 			callbacks.cancel = e => {
@@ -157383,6 +157534,12 @@ ENDSEC
 		onKeyUp (e) {
 			if (this.logMessages) console.log(this.constructor.name + ': onKeyUp');
 
+			this.dispatchEvent({
+				type: 'keyup',
+				keyCode: e.keyCode,
+				event: e
+			});
+
 			delete this.pressedKeys[e.keyCode];
 
 			e.preventDefault();
@@ -157434,7 +157591,7 @@ ENDSEC
 
 			let consumed = false;
 			let consume = () => { return consumed = true; };
-			if (this.hoveredElements.length === 0) {
+			// if (this.hoveredElements.length === 0) {
 				for (let inputListener of this.getSortedListeners()) {
 					inputListener.dispatchEvent({
 						type: 'mousedown',
@@ -157442,7 +157599,7 @@ ENDSEC
 						mouse: this.mouse
 					});
 				}
-			}else {
+			//}else{
 				for(let hovered of this.hoveredElements){
 					let object = hovered.object;
 					object.dispatchEvent({
@@ -157456,7 +157613,7 @@ ENDSEC
 						break;
 					}
 				}
-			}
+			//}
 
 			if (!this.drag) {
 				let target = this.hoveredElements
@@ -157487,7 +157644,7 @@ ENDSEC
 
 			let consumed = false;
 			let consume = () => { return consumed = true; };
-			if (this.hoveredElements.length === 0) {
+			//if (this.hoveredElements.length === 0) {
 				for (let inputListener of this.getSortedListeners()) {
 					inputListener.dispatchEvent({
 						type: 'mouseup',
@@ -157500,7 +157657,7 @@ ENDSEC
 						break;
 					}
 				}
-			}else {
+			//}else{
 				let hovered = this.hoveredElements
 					.map(e => e.object)
 					.find(e => (e._listeners && e._listeners['mouseup']));
@@ -157511,7 +157668,7 @@ ENDSEC
 						consume: consume
 					});
 				}
-			}
+			//}
 
 			if (this.drag) {
 				if (this.drag.object) {
@@ -158992,6 +159149,8 @@ ENDSEC
 	const EARTH_CONTROLLER = 1;
 	const ORBIT_CONTROLLER = 2;
 
+	const SHIFT_KEY_CODE = 16;
+
 	class EarthOrbitControls extends EventDispatcher$2 {
 		constructor (viewer) {
 			super(viewer);
@@ -159010,6 +159169,8 @@ ENDSEC
 
 			this.isPivotIndicator = false;
 			this.previousTouch = null;
+
+			this.keyCode = undefined;
 
 			this.initControllers();
 			this.setupEventListeners();
@@ -159056,7 +159217,20 @@ ENDSEC
 	        this.addEventListener('touchstart', this.onTouchStart);
 	        this.addEventListener('touchend', this.onTouchEnd);
 	        this.addEventListener('touchmove', this.onTouchMove);
+
+			this.viewer.inputHandler.addEventListener('keydown', this.onKeyDown);
+			this.viewer.inputHandler.addEventListener('keyup', this.onKeyUp);
 	    }
+
+		onKeyDown = e => {
+			this.keyCode = e.keyCode;
+			console.log('Key down', e);
+		};
+
+		onKeyUp = e => {
+			this.keyCode = undefined;
+			console.log('Key up', e);
+		};
 
 		onMouseDown = e => {
 			let I = Utils.getMouseIntersection(
@@ -159507,7 +159681,7 @@ ENDSEC
 			let mouse = e.drag.end;
 			let domElement = this.viewer.renderer.domElement;
 
-			if (e.drag.mouse === MOUSE$1.LEFT) {
+			if (e.drag.mouse === MOUSE$1.LEFT && !this.keyCode) {
 
 				let ray = Utils.mouseToRay(mouse, camera, domElement.clientWidth, domElement.clientHeight);
 
@@ -159558,7 +159732,7 @@ ENDSEC
 					view.pan(px, py);
 				}
 
-			} else if (e.drag.mouse === MOUSE$1.RIGHT) {
+			} else if ((e.drag.mouse === MOUSE$1.RIGHT) || (e.drag.mouse === MOUSE$1.LEFT && this.keyCode === SHIFT_KEY_CODE)) {
 				let ndrag = {
 					x: e.drag.lastDrag.x / this.renderer.domElement.clientWidth,
 					y: e.drag.lastDrag.y / this.renderer.domElement.clientHeight
@@ -239067,6 +239241,8 @@ Char: ${this.c}`;
 
 	    	window.addEventListener('resize', this.onWindowResize.bind(this));
 
+			this.opacity3DTiles = 1;
+
 			this.renderArea = domElement;
 			this.guiLoaded = false;
 			this.guiLoadTasks = [];
@@ -239441,6 +239617,19 @@ Char: ${this.c}`;
 					maximumScreenSpaceError: 16,
 					maxConcurrency: 2,
 					wireframe: properties?.wireframe ?? false,
+					contentPostProcess: mesh => {
+						mesh.material.transparent = true;
+						mesh.material.opacity = this.opacity3DTiles; // example: 50% transparency
+						mesh.material.needsUpdate = true;
+
+						mesh.traverse((child) => {
+						  if (child.isMesh) {
+							child.material.transparent = true;
+							child.material.opacity = this.opacity3DTiles;
+							child.material.needsUpdate = true;
+						  }
+						});
+					}
 	            },
 	        });
 
@@ -239469,6 +239658,46 @@ Char: ${this.c}`;
 
 			return parentObject;
 	    }
+
+		set3DTilesOpacity(opacity = 1, uuid) {
+			this.opacity3DTiles = opacity;
+
+			// Check if there are any meshes at all
+			if (!this.scene.meshes || this.scene.meshes.length === 0) {
+				return;
+			}
+
+			// If no UUID is given, update opacity on ALL meshes
+			if (!uuid) {
+				this.scene.meshes.forEach((mesh) => {
+					mesh.traverse((child) => {
+						if (child.isMesh) {
+							child.material.transparent = true;
+							child.material.opacity = this.opacity3DTiles;
+							child.material.needsUpdate = true;
+						}
+					});
+				});
+			} else {
+
+			// Find the single mesh with the matching UUID
+			const object3D = this.scene.meshes.find((obj) => obj.uuid === uuid);
+
+			if (!object3D) {
+			  	// If there's no mesh with this UUID, exit or handle error
+			  	return;
+			}
+
+			// Traverse the matching object’s hierarchy
+			object3D.traverse((child) => {
+			  	if (child.isMesh) {
+					child.material.transparent = true;
+					child.material.opacity = this.opacity3DTiles;
+					child.material.needsUpdate = true;
+			  	}
+				});
+			}
+		}
 
 		addMesh(mesh) {
 	        if (!this.scene.meshes) {
@@ -239835,6 +240064,8 @@ Char: ${this.c}`;
 		};
 
 		setEDLOpacity (value) {
+			// this.set3DTilesOpacity(value)
+
 			if (this.edlOpacity !== value) {
 				this.edlOpacity = value;
 				this.dispatchEvent({'type': 'edl_opacity_changed', 'viewer': this});
@@ -241056,7 +241287,7 @@ Char: ${this.c}`;
 
 				// volumes with clipping enabled
 				//boxes.push(...this.scene.volumes.filter(v => (v.clip)));
-				boxes.push(...this.scene.volumes.filter(v => (v.clip && v instanceof BoxVolume)));
+				boxes.push(...this.scene.volumes.filter(v => (v.clip && v.visible && v instanceof BoxVolume)));
 
 				// profile segments
 				for(let profile of this.scene.profiles){
@@ -241075,7 +241306,7 @@ Char: ${this.c}`;
 					return {box: box, inverse: boxInverse, position: boxPosition};
 				});
 
-				let clipPolygons = this.scene.polygonClipVolumes.filter(vol => vol.initialized);
+				let clipPolygons = this.scene.polygonClipVolumes.filter(vol => vol.initialized && vol.visible);
 
 				// set clip volumes in material
 				for(let pointcloud of visiblePointClouds){
