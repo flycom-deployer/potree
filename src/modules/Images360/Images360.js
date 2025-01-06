@@ -295,6 +295,7 @@ export class Images360 extends EventDispatcher{
 
 					// set point cloud opacity
                     this.viewer.setEDLOpacity(0);
+					this.viewer.set3DTilesOpacity(0)
 				} else {
 					if (this.isNavigation) {
 						const cameraPosition = this.viewer.scene.view.position.clone();
@@ -410,6 +411,7 @@ export class Images360 extends EventDispatcher{
 
 		// restore old opacity
 		this.viewer.setEDLOpacity(this.oldEdlOpacity);
+		this.viewer.set3DTilesOpacity(this.oldEdlOpacity)
 		this.oldEdlOpacity = 0;
 	}
 

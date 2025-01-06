@@ -153817,6 +153817,7 @@ ENDSEC
 
 						// set point cloud opacity
 	                    this.viewer.setEDLOpacity(0);
+						this.viewer.set3DTilesOpacity(0);
 					} else {
 						if (this.isNavigation) {
 							const cameraPosition = this.viewer.scene.view.position.clone();
@@ -153932,6 +153933,7 @@ ENDSEC
 
 			// restore old opacity
 			this.viewer.setEDLOpacity(this.oldEdlOpacity);
+			this.viewer.set3DTilesOpacity(this.oldEdlOpacity);
 			this.oldEdlOpacity = 0;
 		}
 
