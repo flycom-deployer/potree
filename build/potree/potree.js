@@ -134872,7 +134872,7 @@ void main() {
 
 			this.vertexShader = Shaders['pointcloud.vs'];
 			this.fragmentShader = Shaders['pointcloud.fs'];
-			
+
 			this.vertexColors = VertexColors;
 
 			this.updateShaderSource();
@@ -134969,7 +134969,7 @@ void main() {
 
 				defines.push(`#define color_type_${attributeName}`);
 			}
-			
+
 			if(this._treeType === TreeType.OCTREE){
 				defines.push('#define tree_type_octree');
 			}else if(this._treeType === TreeType.KDTREE){
@@ -135029,7 +135029,7 @@ void main() {
 				this.updateShaderSource();
 			}
 		}
-		
+
 		get gradient(){
 			return this._gradient;
 		}
@@ -135098,6 +135098,10 @@ void main() {
 					visible = classification.DEFAULT.visible;
 				}else {
 					color = black;
+				}
+
+				if (!color) {
+					continue;
 				}
 
 				const r = parseInt(255 * color[0]);
@@ -135245,7 +135249,7 @@ void main() {
 				this.uniforms.far.value = value;
 			}
 		}
-		
+
 		get opacity(){
 			return this.uniforms.uOpacity.value;
 		}
@@ -135325,7 +135329,7 @@ void main() {
 		set color (value) {
 			if (!this.uniforms.uColor.value.equals(value)) {
 				this.uniforms.uColor.value.copy(value);
-				
+
 				this.dispatchEvent({
 					type: 'color_changed',
 					target: this
@@ -135562,7 +135566,7 @@ void main() {
 			}
 		}
 
-		
+
 		get extraGamma () {
 			return this.uniforms.uExtraGammaBrightContr.value[0];
 		}
@@ -135762,11 +135766,11 @@ void main() {
 
 			context.fillStyle = ctxGradient;
 			context.fill();
-			
+
 			//let texture = new THREE.Texture(canvas);
 			let texture = new CanvasTexture$1(canvas);
 			texture.needsUpdate = true;
-			
+
 			texture.minFilter = LinearFilter$1;
 			texture.wrap = RepeatWrapping$1;
 			texture.repeat = 2;
@@ -135774,16 +135778,16 @@ void main() {
 
 			return texture;
 		}
-		
+
 		static generateMatcapTexture (matcap) {
 		var url = new URL(Potree.resourcePath + "/textures/matcap/" + matcap).href;
 		let texture = new TextureLoader$1().load( url );
-			texture.magFilter = texture.minFilter = LinearFilter$1; 
+			texture.magFilter = texture.minFilter = LinearFilter$1;
 			texture.needsUpdate = true;
 			// PotreeConverter_1.6_2018_07_29_windows_x64\PotreeConverter.exe autzen_xyzrgbXYZ_ascii.xyz -f xyzrgbXYZ -a RGB NORMAL -o autzen_xyzrgbXYZ_ascii_a -p index --overwrite
-			// Switch matcap texture on the fly : viewer.scene.pointclouds[0].material.matcap = 'matcap1.jpg'; 
+			// Switch matcap texture on the fly : viewer.scene.pointclouds[0].material.matcap = 'matcap1.jpg';
 			// For non power of 2, use LinearFilter and dont generate mipmaps, For power of 2, use NearestFilter and generate mipmaps : matcap2.jpg 1 2 8 11 12 13
-			return texture; 
+			return texture;
 		}
 
 		disableEvents(){
@@ -158586,7 +158590,9 @@ ENDSEC
 				LEFT: ['A'.charCodeAt(0), 37],
 				RIGHT: ['D'.charCodeAt(0), 39],
 				UP: ['R'.charCodeAt(0), 33],
-				DOWN: ['F'.charCodeAt(0), 34]
+				DOWN: ['F'.charCodeAt(0), 34],
+				PLUS: [43, 187, 107],
+				MINUS: [45, 189, 109]
 			};
 
 			this.fadeFactor = 50;
@@ -158650,7 +158656,36 @@ ENDSEC
 			this.addEventListener('drop', drop);
 			this.addEventListener('mousewheel', scroll);
 			this.addEventListener('dblclick', dblclick);
-		}
+
+			this.viewer.inputHandler.addEventListener('keydown', this.onKeyDown);
+	    }
+
+		onKeyDown = e => {
+			let accUp = this.keys.PLUS.some(keyCode => keyCode === e.keyCode);
+			let accDown = this.keys.MINUS.some(keyCode => keyCode === e.keyCode);
+
+			if (!accDown && !accUp) {
+				return;
+			}
+
+	 		const speedRange = new Vector2$1(1, 10 * 1000);
+			const toExpSpeed = value => ((value - speedRange.x) / speedRange.y) ** (1 / 4);
+	        const toLinearSpeed = val => (val ** 4) * speedRange.y + speedRange.x;
+
+			const speed = this.viewer.getMoveSpeed();
+			const speedDiff = 0.01;
+
+			let newSpeed = toLinearSpeed(toExpSpeed(speed) + speedDiff * (accUp ? 1 : -1));
+
+			if (newSpeed < speedRange.x) {
+				newSpeed = speedRange.x;
+			}
+			if (newSpeed > speedRange.y) {
+				newSpeed = speedRange.y;
+			}
+
+	        this.viewer.setMoveSpeed(newSpeed);
+		};
 
 		setScene (scene) {
 			this.scene = scene;
@@ -158661,10 +158696,10 @@ ENDSEC
 			this.pitchDelta = 0;
 			this.translationDelta.set(0, 0, 0);
 		}
-		
+
 		zoomToLocation(mouse){
 			let camera = this.scene.getActiveCamera();
-			
+
 			let I = Utils.getMousePointCloudIntersection(
 				mouse,
 				camera,
@@ -159151,11 +159186,13 @@ ENDSEC
 	const EARTH_CONTROLLER = 1;
 	const ORBIT_CONTROLLER = 2;
 
-	const SHIFT_KEY_CODE = 16;
-
 	class EarthOrbitControls extends EventDispatcher$2 {
 		constructor (viewer) {
 			super(viewer);
+
+			this.keys = {
+				SHIFT: [16]
+			};
 
 			this.controlerType = UNDEFINED_CONTROLLER;
 			this.viewer = viewer;
@@ -159171,8 +159208,6 @@ ENDSEC
 
 			this.isPivotIndicator = false;
 			this.previousTouch = null;
-
-			this.keyCode = undefined;
 
 			this.initControllers();
 			this.setupEventListeners();
@@ -159219,20 +159254,7 @@ ENDSEC
 	        this.addEventListener('touchstart', this.onTouchStart);
 	        this.addEventListener('touchend', this.onTouchEnd);
 	        this.addEventListener('touchmove', this.onTouchMove);
-
-			this.viewer.inputHandler.addEventListener('keydown', this.onKeyDown);
-			this.viewer.inputHandler.addEventListener('keyup', this.onKeyUp);
 	    }
-
-		onKeyDown = e => {
-			this.keyCode = e.keyCode;
-			console.log('Key down', e);
-		};
-
-		onKeyUp = e => {
-			this.keyCode = undefined;
-			console.log('Key up', e);
-		};
 
 		onMouseDown = e => {
 			let I = Utils.getMouseIntersection(
@@ -159683,7 +159705,10 @@ ENDSEC
 			let mouse = e.drag.end;
 			let domElement = this.viewer.renderer.domElement;
 
-			if (e.drag.mouse === MOUSE$1.LEFT && !this.keyCode) {
+			let ih = this.viewer.inputHandler;
+			let shiftPressed = this.keys.SHIFT.some(e => ih.pressedKeys[e]);
+
+			if (e.drag.mouse === MOUSE$1.LEFT && !shiftPressed) {
 
 				let ray = Utils.mouseToRay(mouse, camera, domElement.clientWidth, domElement.clientHeight);
 
@@ -159734,7 +159759,7 @@ ENDSEC
 					view.pan(px, py);
 				}
 
-			} else if ((e.drag.mouse === MOUSE$1.RIGHT) || (e.drag.mouse === MOUSE$1.LEFT && this.keyCode === SHIFT_KEY_CODE)) {
+			} else if ((e.drag.mouse === MOUSE$1.RIGHT) || (e.drag.mouse === MOUSE$1.LEFT && shiftPressed)) {
 				let ndrag = {
 					x: e.drag.lastDrag.x / this.renderer.domElement.clientWidth,
 					y: e.drag.lastDrag.y / this.renderer.domElement.clientHeight

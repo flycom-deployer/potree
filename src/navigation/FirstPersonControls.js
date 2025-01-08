@@ -39,7 +39,9 @@ export class FirstPersonControls extends EventDispatcher {
 			LEFT: ['A'.charCodeAt(0), 37],
 			RIGHT: ['D'.charCodeAt(0), 39],
 			UP: ['R'.charCodeAt(0), 33],
-			DOWN: ['F'.charCodeAt(0), 34]
+			DOWN: ['F'.charCodeAt(0), 34],
+			PLUS: [43, 187, 107],
+			MINUS: [45, 189, 109]
 		};
 
 		this.fadeFactor = 50;
@@ -103,7 +105,36 @@ export class FirstPersonControls extends EventDispatcher {
 		this.addEventListener('drop', drop);
 		this.addEventListener('mousewheel', scroll);
 		this.addEventListener('dblclick', dblclick);
-	}
+
+		this.viewer.inputHandler.addEventListener('keydown', this.onKeyDown);
+    }
+
+	onKeyDown = e => {
+		let accUp = this.keys.PLUS.some(keyCode => keyCode === e.keyCode);
+		let accDown = this.keys.MINUS.some(keyCode => keyCode === e.keyCode);
+
+		if (!accDown && !accUp) {
+			return;
+		}
+
+ 		const speedRange = new THREE.Vector2(1, 10 * 1000);
+		const toExpSpeed = value => ((value - speedRange.x) / speedRange.y) ** (1 / 4);
+        const toLinearSpeed = val => (val ** 4) * speedRange.y + speedRange.x;
+
+		const speed = this.viewer.getMoveSpeed();
+		const speedDiff = 0.01;
+
+		let newSpeed = toLinearSpeed(toExpSpeed(speed) + speedDiff * (accUp ? 1 : -1));
+
+		if (newSpeed < speedRange.x) {
+			newSpeed = speedRange.x;
+		}
+		if (newSpeed > speedRange.y) {
+			newSpeed = speedRange.y;
+		}
+
+        this.viewer.setMoveSpeed(newSpeed);
+	};
 
 	setScene (scene) {
 		this.scene = scene;
@@ -114,10 +145,10 @@ export class FirstPersonControls extends EventDispatcher {
 		this.pitchDelta = 0;
 		this.translationDelta.set(0, 0, 0);
 	}
-	
+
 	zoomToLocation(mouse){
 		let camera = this.scene.getActiveCamera();
-		
+
 		let I = Utils.getMousePointCloudIntersection(
 			mouse,
 			camera,
