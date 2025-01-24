@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="">
+	<meta name="author" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>Potree Viewer</title>
+
+	<link rel="stylesheet" type="text/css" href="../build/potree/potree.css">
+	<link rel="stylesheet" type="text/css" href="../libs/jquery-ui/jquery-ui.min.css">
+	<link rel="stylesheet" type="text/css" href="../libs/openlayers3/ol.css">
+	<link rel="stylesheet" type="text/css" href="../libs/spectrum/spectrum.css">
+	<link rel="stylesheet" type="text/css" href="../libs/jstree/themes/mixed/style.css">
+</head>
+
+<body>
+	<script src="../libs/jquery/jquery-3.1.1.min.js"></script>
+	<script src="../libs/spectrum/spectrum.js"></script>
+	<script src="../libs/jquery-ui/jquery-ui.min.js"></script>
+
+
+	<script src="../libs/other/BinaryHeap.js"></script>
+	<script src="../libs/tween/tween.min.js"></script>
+	<script src="../libs/d3/d3.js"></script>
+	<script src="../libs/proj4/proj4.js"></script>
+	<script src="../libs/openlayers3/ol.js"></script>
+	<script src="../libs/i18next/i18next.js"></script>
+	<script src="../libs/jstree/jstree.js"></script>
+	<script src="../build/potree/potree.js"></script>
+	<script src="../libs/plasio/js/laslaz.js"></script>
+	<script src="../libs/copc/index.js"></script>
+
+	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
+	<!-- INCLUDE SETTINGS HERE -->
+
+	<div class="potree_container" style="position: absolute; width: 100%; height: 100%; left: 0px; top: 0px; ">
+		<div id="potree_render_area" style="background-image: url('../build/potree/resources/images/background.jpg');"></div>
+		<div id="potree_sidebar_container"> </div>
+	</div>
+
+	<script type="module">
+import {GLTFLoader} from "../libs/three.js/loaders/GLTFLoader.js";
+import { DRACOLoader } from '../libs/three.js/loaders/DRACOLoader.js';
+import * as THREE from "../libs/three.js/build/three.module.js";
+window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
+
+		viewer.setEDLEnabled(true);
+		viewer.setFOV(60);
+		viewer.setPointBudget(1_000_000);
+		viewer.loadSettingsFromURL();
+		viewer.setBackground("skybox");
+		viewer.renderer.outputEncoding = THREE.sRGBEncoding;
+
+		// viewer.setDescription(`Point cloud courtesy of PG&E and <a href="https://opentopography.org/">Open Topography</a>.`);
+		// viewer.setDescription(`Point cloud courtesy of PG&E and <a href="https://opentopography.org/">Open Topography</a>.`);
+
+		viewer.loadGUI(() => {
+			viewer.setLanguage('en');
+			$("#menu_tools").next().show();
+			$("#menu_clipping").next().show();
+			viewer.toggleSidebar();
+		});
+
+		// Load and add point cloud to scene
+		// Potree.loadPointCloud("/proxy-binary?url=https://gms.flycom.si/country/Slovenia/basemap/lidar/entwine/ept.json", "Morro Bay", e => {
+		// Potree.loadPointCloud("/mounted/darko/flycom/entwine_pointcloud/ept.json", "Dron test", e => {
+//Potree.loadPointCloud("/meshviewer/entwine_pointcloud/ept.json", "Dron test", e => {
+//Potree.loadPointCloud("/meshviewer/beno/ept.json", "Dron test", e => {
+Potree.loadPointCloud("/meshviewer/test1/ept.json", "Dron test", e => {
+			let scene = viewer.scene;
+			let pointcloud = e.pointcloud;
+console.log(pointcloud);
+			let material = pointcloud.material;
+			material.size = 0.6;
+			material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+			material.shape = Potree.PointShape.SQUARE;
+			material.activeAttributeName = "rgba";
+
+			scene.addPointCloud(pointcloud);
+
+			viewer.scene.view.setView(
+				[457772.76, 5106013.69, 600],
+				[457747.76, 5106034.69, 0],
+			);
+
+			const dracoLoader = new DRACOLoader();
+			dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/libs/draco/');
+
+			const loader = new GLTFLoader();
+loader.setDRACOLoader(dracoLoader); // Provide DRACOLoader instance to GLTFLoader
+
+// loader.load('/mounted/darko/flycom/odm_texturing/odm_textured_model_geo.glb', (gltf) => {
+	loader.load('/meshviewer/odm_texturing/odm_textured_model_geo.glb', (gltf) => {
+	gltf.scene.position.set(457748.76, 5106032.69, 0);
+
+    viewer.scene.scene.add(gltf.scene);
+
+}, undefined, (error) => {
+    console.error(error);
+});
+		});
+
+	</script>
+
+
+  </body>
+</html>
