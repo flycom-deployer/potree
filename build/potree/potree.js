@@ -153808,6 +153808,10 @@ ENDSEC
 				if (this.nextPreviousDirection) {
 					dir = this.nextPreviousDirection.clone().normalize();
 				} else {
+					// set point cloud and 3d tiles opacity to 0
+					this.viewer.setEDLOpacity(0);
+					this.viewer.set3DTilesOpacity(0);
+
 					// camera source is image position, optional target is target for camera
 					if (image360.target) {
 						// if the target has no z coordinate, take it from image position
@@ -153819,9 +153823,6 @@ ENDSEC
 						const optionalTarget = new Vector3$1(x, y, z);
 						dir = optionalTarget.clone().sub(target).normalize();
 
-						// set point cloud opacity
-	                    this.viewer.setEDLOpacity(0);
-						this.viewer.set3DTilesOpacity(0);
 					} else {
 						if (this.isNavigation) {
 							const cameraPosition = this.viewer.scene.view.position.clone();
@@ -153837,7 +153838,7 @@ ENDSEC
 							// Original target point in the sphere's local coordinates (middle of the texture)
 							const localTargetPoint = new Vector3$1(1, 0, 0);
 
-									this.sphere.updateMatrixWorld();
+							this.sphere.updateMatrixWorld();
 							// Transform the local target point to world coordinates
 							const worldTargetPoint = localTargetPoint.applyMatrix4(this.sphere.matrixWorld);
 
@@ -239732,8 +239733,11 @@ Char: ${this.c}`;
 	        }
 
 	        if (!this.scene.meshes.length) {
-	            this.renderer.oldEncoding = this.renderer.outputEncoding;
-	            this.renderer.outputEncoding = sRGBEncoding;
+	            // this.renderer.oldEncoding = this.renderer.outputEncoding;
+	            // this.renderer.outputEncoding = sRGBEncoding;
+	            // sRGBEncoding is deprecated: use SRGBColorSpace in three. js r152+.
+				this.renderer.oldOutputColorSpace = this.renderer.outputColorSpace;
+	            this.renderer.outputColorSpace = SRGBColorSpace;
 
 				this.ambientLight = new AmbientLight$1( 0x555555 ); // soft white light
 	        	this.scene.scene.add(this.ambientLight);
