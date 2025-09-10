@@ -35,7 +35,9 @@ import { VRButton } from '../../libs/three.js/extra/VRButton.js';
 
 import JSON5 from "../../libs/json5-2.1.3/json5.mjs";
 
-import { sRGBEncoding } from 'three';
+// import { sRGBEncoding } from 'three';
+import { SRGBColorSpace } from 'three';
+
 // import {GeoTransform, Loader3DTiles} from 'three-loader-3dtiles';
 import {Loader3DTiles, PointCloudColoring} from 'three-loader-3dtiles';
 import {GPUPicker} from "../utils/GPUPicker";
@@ -515,8 +517,11 @@ export class Viewer extends EventDispatcher{
         }
 
         if (!this.scene.meshes.length) {
-            this.renderer.oldEncoding = this.renderer.outputEncoding;
-            this.renderer.outputEncoding = sRGBEncoding;
+            // this.renderer.oldEncoding = this.renderer.outputEncoding;
+            // this.renderer.outputEncoding = sRGBEncoding;
+            // sRGBEncoding is deprecated: use SRGBColorSpace in three. js r152+.
+			this.renderer.oldOutputColorSpace = this.renderer.outputColorSpace;
+            this.renderer.outputColorSpace = SRGBColorSpace;
 
 			this.ambientLight = new THREE.AmbientLight( 0x555555 ); // soft white light
         	this.scene.scene.add(this.ambientLight);
